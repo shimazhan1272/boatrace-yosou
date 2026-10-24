@@ -7,8 +7,9 @@ const ODDS_WINDOW = 25;
 let index, day;
 const state = { date: null, stadium: null, race: null };
 
-async function getJSON(path) {
-  const res = await fetch(path, { cache: "no-cache" });
+// GitHub Pages は10分キャッシュされるので、クエリを付けて常に最新を取る
+async function getJSON(path, version = Math.floor(Date.now() / 60000)) {
+  const res = await fetch(`${path}?t=${encodeURIComponent(version)}`, { cache: "no-store" });
   if (!res.ok) throw new Error(path + " " + res.status);
   return res.json();
 }
@@ -83,7 +84,7 @@ async function select({ date, stadium, race }) {
     updateDayButtons();
     return;
   }
-  if (!day || day.date !== entry.date) day = await getJSON("data/" + entry.file);
+  if (!day || day.date !== entry.date) day = await getJSON("data/" + entry.file, index.updated_at);
   state.date = entry.date;
   $("#empty").textContent = "この日の予想はありません。";
   const note = $("#day-note");
