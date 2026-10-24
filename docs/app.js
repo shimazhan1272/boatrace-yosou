@@ -193,13 +193,27 @@ function renderRace(r) {
         <td class="num hide-sm">${b.st_exp != null ? "." + Math.round(b.st_exp * 100).toString().padStart(2, "0") : "-"}</td>
         <td class="num hide-sm">${b.ex_time != null ? `${b.ex_time.toFixed(2)}<small class="${b.ex_adj < 0 ? "good" : "muted"}">(${b.ex_adj > 0 ? "+" : ""}${b.ex_adj.toFixed(2)})</small>` : "-"}</td>
         <td><div class="bar"><i style="width:${(b.win / maxWin) * 80}px"></i><small>${pct(b.win)}</small></div></td>
+        <td class="num">${pct(b.top2)}</td>
         <td class="num">${pct(b.top3)}</td>
       </tr>`).join("");
 
     const res = r.result;
     const hitCombos = new Set(res?.trifecta ?? []);
-    $(".tri", el).innerHTML = r.trifecta.slice(0, 20)
-      .map(([c, p], i) => `<li class="${hitCombos.has(c) ? "hit" : ""}"><span class="rank">${i + 1}</span>${combo(c)}<small>${pct(p)}</small></li>`).join("");
+    // 3連単上位20点: 出現確率・オッズ・期待値（= 出現確率 × オッズ）
+    const odds = r.odds?.trifecta ?? {};
+    const head = `<li class="tri-head"><span class="rank">順</span><span>組番</span><span class="p">確率</span><span class="o">オッズ</span><span class="ev">期待値</span></li>`;
+    const rows = r.trifecta.slice(0, 20).map(([c, p], i) => {
+      const o = odds[c];
+      const ev = o ? p * o : null;
+      return `<li class="${hitCombos.has(c) ? "hit" : ""}"><span class="rank">${i + 1}</span>${combo(c)}`
+        + `<span class="p">${pct(p)}</span><span class="o">${o ? o.toFixed(1) : "-"}</span>`
+        + `<span class="ev ${ev >= 1 ? "plus" : ""}">${ev ? ev.toFixed(2) : "-"}</span></li>`;
+    });
+    // PC は 1〜10位 / 11〜20位 の2列（各列に見出し）、スマホは1列
+    $(".tri", el).innerHTML = head + rows.slice(0, 10).join("") + head.replace("tri-head", "tri-head second") + rows.slice(10).join("");
+    $(".odds-note", el).textContent = r.odds
+      ? `オッズ: ${r.odds.at === "確定" ? "確定オッズ" : r.odds.at.slice(11, 16) + " 時点"}（最新は公式サイトで確認してください）`
+      : (r.result ? "オッズ未取得" : `オッズは締切${ODDS_WINDOW}分前から自動取得。↻ 更新でいつでも取得できます`);
 
     const ev = r.ev;
     const evList = $(".ev-list", el);

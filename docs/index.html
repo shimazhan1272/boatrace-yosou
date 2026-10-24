@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>ボートレースAI予想</title>
 <meta name="description" content="Boatrace Open API のデータを使った機械学習によるボートレース予想">
-<link rel="stylesheet" href="style.css?v=8">
+<link rel="stylesheet" href="style.css?v=9">
 </head>
 <body>
 <header>
@@ -47,7 +47,7 @@
       <div class="race-meta"><span class="badge model"></span> <span class="closed muted"></span></div>
     </header>
     <table class="boats">
-      <thead><tr><th>枠</th><th>選手</th><th class="num hide-sm">勝率</th><th class="num hide-sm" title="今節の平均着順（走数）">今節</th><th class="num hide-sm" title="今節・直近・コース別から推定したスタートタイミング">予想ST</th><th class="num hide-sm" title="展示タイム（括弧内はコース補正後のレース内偏差、マイナスほど良い）">展示</th><th>1着確率</th><th class="num">3着内</th></tr></thead>
+      <thead><tr><th>枠</th><th>選手</th><th class="num hide-sm">勝率</th><th class="num hide-sm" title="今節の平均着順（走数）">今節</th><th class="num hide-sm" title="今節・直近・コース別から推定したスタートタイミング">予想ST</th><th class="num hide-sm" title="展示タイム（括弧内はコース補正後のレース内偏差、マイナスほど良い）">展示</th><th>1着確率</th><th class="num">2着内</th><th class="num">3着内</th></tr></thead>
       <tbody></tbody>
     </table>
     <details class="legend">
@@ -60,14 +60,15 @@
         <dt>予想ST</dt><dd>予想されるスタートタイミング（秒）。今節の平均ST（2走以上）→ 直近90日 → 期別平均の順に使い、このコースでのST（過去1年5走以上）があればそれを優先。小さいほど早い。</dd>
         <dt>展示</dt><dd>展示航走のタイム（秒）。括弧内はコース補正後の値：レース内平均との差から、そのレース場・コースのいつもの差（過去1年）を引いたもの。マイナスほど良い。展示前は「-」。</dd>
         <dt>1着確率</dt><dd>AI が予想した1着になる確率（6艇の合計100%）。</dd>
+        <dt>2着内</dt><dd>2着以内に入る確率。</dd>
         <dt>3着内</dt><dd>3着以内に入る確率。</dd>
         <dt>イン1着率</dt><dd>このレース場で過去1年に1コースの艇が1着になった割合。</dd>
         <dt>出走表のみ / 直前情報あり</dt><dd>予想に展示タイム・進入コースなどの直前情報を使ったかどうか。展示後に「↻ 更新」を押すと直前情報ありの予想に切り替わる。</dd>
-        <dt>3連単 確率上位20点</dt><dd>1着確率から計算した、3連単の各組み合わせの確率の上位20点。</dd>
-        <dt>期待値 推奨</dt><dd>当たる確率 × オッズ（期待値）が1.2以上の買い目（最大3点）。締切25分前以降のオッズで計算。</dd>
+        <dt>3連単 確率上位20点</dt><dd>1着確率から計算した3連単の各組み合わせの出現確率の上位20点と、そのオッズ・期待値（出現確率 × オッズ。1以上は払戻の期待が掛け金を上回る）。</dd>
+        <dt>期待値 推奨</dt><dd>3連単・2連単の全組み合わせから、期待値（出現確率 × オッズ）が1.2以上で出現確率1%以上の買い目を期待値の高い順に最大3点。</dd>
       </dl>
     </details>
-    <div class="tri-box"><h3>3連単 確率上位20点</h3><ol class="tri"></ol></div>
+    <div class="tri-box"><h3>3連単 確率上位20点 <small class="odds-note muted"></small></h3><ol class="tri"></ol></div>
     <div class="picks">
       <div class="ev"><h3>期待値 推奨</h3><ul class="ev-list"></ul></div>
       <div class="result"></div>
@@ -75,6 +76,6 @@
   </article>
 </template>
 
-<script src="app.js?v=8"></script>
+<script src="app.js?v=9"></script>
 </body>
 </html>

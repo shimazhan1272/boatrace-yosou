@@ -82,12 +82,14 @@ select { font: inherit; padding: 6px 10px; border-radius: 8px; border: 1px solid
 
 .tri-box { margin-top: 12px; }
 .tri-box h3 { font-size: 13px; margin: 0 0 6px; color: var(--muted); font-weight: 500; }
-.tri-box .tri { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; }
-.tri-box .tri li { display: flex; align-items: baseline; gap: 6px; padding: 4px 8px; border: 1px solid var(--line); border-radius: 6px; font-variant-numeric: tabular-nums; }
-.tri-box .tri .rank { font-size: 10px; color: var(--muted); min-width: 1.4em; }
-.tri-box .tri small { margin-left: auto; font-size: 11px; color: var(--muted); }
-.tri-box .tri li.hit { border-color: var(--hit); color: var(--hit); }
-.tri-box .tri li.hit small { color: var(--hit); }
+.tri-box h3 small { font-weight: 400; margin-left: 6px; }
+.tri-box .tri { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: 1fr 1fr; column-gap: 16px; grid-auto-flow: column; grid-template-rows: repeat(11, auto); }
+.tri-box .tri li { display: grid; grid-template-columns: 1.6em minmax(84px, 1fr) 4.2em 4.6em 4em; align-items: center; gap: 6px; padding: 3px 6px; border-bottom: 1px solid var(--line); font-variant-numeric: tabular-nums; font-size: 13px; }
+.tri-box .tri .tri-head { font-size: 11px; color: var(--muted); border-bottom-color: var(--muted); }
+.tri-box .tri .rank { font-size: 11px; color: var(--muted); }
+.tri-box .tri .p, .tri-box .tri .o, .tri-box .tri .ev { text-align: right; }
+.tri-box .tri .ev.plus { color: var(--hit); font-weight: 700; }
+.tri-box .tri li.hit { background: color-mix(in srgb, var(--hit) 14%, transparent); border-radius: 4px; }
 .picks { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 12px; }
 .ev-list { margin: 0; padding: 0; list-style: none; font-variant-numeric: tabular-nums; }
 .ev-list li { padding: 1px 0; }
@@ -104,8 +106,9 @@ select { font: inherit; padding: 6px 10px; border-radius: 8px; border: 1px solid
 
 @media (max-width: 600px) {
   .picks { grid-template-columns: 1fr; }
-  .tri-box .tri { grid-template-columns: repeat(2, 1fr); }
-  .tri-box .tri li { padding: 4px 6px; gap: 4px; }
+  .tri-box .tri { grid-template-columns: 1fr; grid-auto-flow: row; grid-template-rows: none; }
+  .tri-box .tri .tri-head.second { display: none; }
+  .tri-box .tri li { gap: 4px; padding: 3px 2px; }
   .ball { width: 20px; height: 20px; font-size: 11px; }
   .legend dl { grid-template-columns: 1fr; gap: 0; }
   .legend dd { margin-bottom: 6px; }

@@ -115,13 +115,11 @@ def race(date_: date = Query(alias="date"), stadium: int = Query(ge=1, le=24), r
 
         now = datetime.now(JST)
         closed = datetime.strptime(program["race_closed_at"], "%Y-%m-%d %H:%M:%S").replace(tzinfo=JST)
-        if kind == "full" and now < closed:
+        if now < closed:
             try:
                 book = _live_odds(date_, stadium, race)
                 if book["trifecta"]:
-                    probs = {b["boat"]: b["win"] for b in result["boats"]}
-                    result["ev"] = {"odds_at": book["fetched_at"], "config": strategy.DEFAULT.to_dict(),
-                                    "picks": strategy.picks(probs, book)}
+                    strategy.attach(result, book, book["fetched_at"])
             except Exception:
                 pass  # オッズが取れなくても予想は返す
         result["live"] = {"fetched_at": now.strftime("%Y-%m-%d %H:%M:%S"), "exhibition": preview is not None}

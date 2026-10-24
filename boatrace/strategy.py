@@ -1,8 +1,8 @@
 """オッズと予測確率から期待値ベースの推奨買い目を選ぶ。
 
-期待値 EV = 確率 × オッズ（100円あたりの払戻期待 / 100）。
-モデル確率は大穴ほど過大評価しやすいので、市場（オッズ）の示す確率と混ぜてから使う:
-    p = w * p_model + (1 - w) * p_market
+期待値 EV = 出現確率 × オッズ（100円あたりの払戻期待 / 100）。出現確率はモデルの確率。
+（model_weight を 1 未満にすると、大穴の過大評価を抑えるためにオッズから逆算した市場確率と混ぜる:
+    p = w * p_model + (1 - w) * p_market ）
 """
 from dataclasses import asdict, dataclass
 
@@ -11,7 +11,7 @@ from . import model
 
 @dataclass(frozen=True)
 class EVConfig:
-    model_weight: float = 0.5   # w: モデル確率の重み
+    model_weight: float = 1.0   # w: モデル確率の重み（1.0 = 出現確率そのまま）
     ev_min: float = 1.2         # これ以上の期待値の買い目だけ買う
     prob_min: float = 0.01      # 当たる確率がこれ未満の大穴は買わない
     max_picks: int = 3          # 1レースあたりの最大点数
@@ -57,6 +57,17 @@ def picks(win_probs: dict[int, float], odds: dict, cfg: EVConfig = DEFAULT) -> l
         {k: (round(v, 4) if isinstance(v, float) else v) for k, v in c.items()}
         for c in chosen[: cfg.max_picks]
     ]
+
+
+def attach(race: dict, book: dict, odds_at: str, cfg: EVConfig = DEFAULT):
+    """予想 dict に、表示中の3連単上位のオッズ・期待値と、期待値推奨の買い目を付ける。"""
+    tri = book.get("trifecta") or {}
+    race["odds"] = {
+        "at": odds_at,
+        "trifecta": {c: tri[c] for c, _ in race["trifecta"] if c in tri},
+    }
+    probs = {b["boat"]: b["win"] for b in race["boats"]}
+    race["ev"] = {"odds_at": odds_at, "config": cfg.to_dict(), "picks": picks(probs, book, cfg)}
 
 
 def settle(bets: list[dict], payouts: dict) -> int:

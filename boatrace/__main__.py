@@ -27,6 +27,7 @@ def main():
     p = sub.add_parser("predict")
     p.add_argument("date", type=date.fromisoformat, nargs="?")
     sub.add_parser("update")
+    sub.add_parser("reattach-odds")
     args = ap.parse_args()
 
     if args.cmd == "fetch":
@@ -44,6 +45,8 @@ def main():
         data = pipeline.predict_day(args.date or today_jst())
         pipeline.build_index()
         print(f"{data['date']}: {len(data['races'])} races")
+    elif args.cmd == "reattach-odds":
+        pipeline.reattach_backfill_odds()
     elif args.cmd == "update":
         pipeline.update()
 

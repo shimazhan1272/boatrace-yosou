@@ -287,13 +287,7 @@ def _attach_ev(race: dict, d: date, now: datetime):
         return
     if not book["trifecta"]:
         return
-    probs = {b["boat"]: b["win"] for b in race["boats"]}
-    race["ev"] = {
-        "odds_at": book["fetched_at"],
-        "config": strategy.DEFAULT.to_dict(),
-        # 公式オッズの転載にならないよう、推奨した買い目のオッズだけ残す
-        "picks": strategy.picks(probs, book),
-    }
+    strategy.attach(race, book, book["fetched_at"])
 
 
 BEFOREINFO_WINDOW_MIN = 45  # 締切この分数前から公式サイトの直前情報を見に行く
@@ -378,7 +372,9 @@ def predict_day(d: date) -> dict:
         else:
             _attach_ev(race, d, now_dt)
             if "ev" not in race and old and "ev" in old:
-                race["ev"] = old["ev"]  # 今回取れなければ前回の買い目を維持
+                race["ev"] = old["ev"]  # 今回取れなければ前回のオッズ・買い目を維持
+                if "odds" in old:
+                    race["odds"] = old["odds"]
         _score(race, res_by_id.get(rid), pays.get(rid))
         races.append(race)
     races.sort(key=lambda r: (r["stadium"], r["race_number"]))
@@ -419,9 +415,7 @@ def backfill(start: date, end: date, train_start: date = date(2025, 4, 1)):
             race = _race_prediction(g, "full" if g["full"].iloc[0] else "base")
             book = odds.fetch_odds(d, race["stadium"], race["race_number"], final=True, cached_only=True)
             if book["trifecta"]:
-                probs = {b["boat"]: b["win"] for b in race["boats"]}
-                race["ev"] = {"odds_at": "確定", "config": strategy.DEFAULT.to_dict(),
-                              "picks": strategy.picks(probs, book)}
+                strategy.attach(race, book, "確定")
             _score(race, res_by_id.get(rid), payouts.get(rid))
             races.append(race)
         races.sort(key=lambda r: (r["stadium"], r["race_number"]))
@@ -431,6 +425,31 @@ def backfill(start: date, end: date, train_start: date = date(2025, 4, 1)):
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(json.dumps(data, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
         print(f"  {d}: {len(races)} races")
+    build_index()
+
+
+def reattach_backfill_odds():
+    """検証データの日に、キャッシュ済みの確定オッズでオッズ・期待値・成績を付け直す（再学習なし）。"""
+    from .features import race_id
+
+    for path in sorted((SITE_DATA_DIR / "predictions").glob("*.json")):
+        data = json.loads(path.read_text(encoding="utf-8"))
+        if not data.get("backtest"):
+            continue
+        d = date.fromisoformat(data["date"])
+        results = fetch_day("results", d)
+        res_by_id, pays = {race_id(r): r for r in results}, payouts_by_race(results)
+        n = 0
+        for race in data["races"]:
+            book = odds.fetch_odds(d, race["stadium"], race["race_number"], final=True, cached_only=True)
+            if book["trifecta"]:
+                strategy.attach(race, book, "確定")
+                n += 1
+            race.pop("result", None)
+            _score(race, res_by_id.get(race["race_id"]), pays.get(race["race_id"]))
+        path.write_text(json.dumps(data, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
+        if n:
+            print(f"  {d}: odds for {n} races")
     build_index()
 
 
