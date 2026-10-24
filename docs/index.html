@@ -5,25 +5,33 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>ボートレースAI予想</title>
 <meta name="description" content="Boatrace Open API のデータを使った機械学習によるボートレース予想">
-<link rel="stylesheet" href="style.css?v=2">
+<link rel="stylesheet" href="style.css?v=3">
 </head>
 <body>
 <header>
   <div class="wrap head">
     <h1>ボートレースAI予想</h1>
-    <select id="date" aria-label="日付"></select>
+    <div class="date-nav">
+      <button id="prev-day" type="button" aria-label="前の日">◀</button>
+      <input id="date" type="date" aria-label="日付">
+      <button id="next-day" type="button" aria-label="次の日">▶</button>
+    </div>
   </div>
 </header>
 
 <main class="wrap">
+  <p id="day-note" class="day-note" hidden></p>
   <div class="picker">
     <div class="picker-row"><span class="picker-label">レース場</span><nav id="stadiums" class="tabs" aria-label="レース場"></nav></div>
     <div class="picker-row"><span class="picker-label">レース</span><nav id="race-tabs" class="tabs races-tabs" aria-label="レース"></nav></div>
   </div>
   <section id="races"></section>
   <p id="empty" class="muted" hidden>この日の予想はありません。</p>
-  <h2 class="section-title">成績</h2>
+  <h2 class="section-title">成績（実運用: 締切前に公開した予想）</h2>
   <section id="summary" class="summary"></section>
+  <h2 class="section-title">検証（学習に使っていない過去日の事後予想）</h2>
+  <section id="summary-bt" class="summary"></section>
+  <p class="muted small-note">検証の期待値買いは、確定オッズを取得済みのレースだけで計算した参考値です。実運用は締切前のオッズで判断するため条件が不利になり、レース数も少ないので結果は大きく変わり得ます。</p>
 </main>
 
 <footer class="wrap muted">
@@ -50,6 +58,6 @@
   </article>
 </template>
 
-<script src="app.js?v=2"></script>
+<script src="app.js?v=3"></script>
 </body>
 </html>

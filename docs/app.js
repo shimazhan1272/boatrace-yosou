@@ -15,18 +15,52 @@ async function getJSON(path) {
 
 async function init() {
   index = await getJSON("data/index.json");
-  const sel = $("#date");
-  for (const d of index.days) sel.add(new Option(d.date, d.date));
-  sel.addEventListener("change", () => select({ date: sel.value, stadium: state.stadium, race: null }));
+  const input = $("#date");
+  const dates = index.days.map((d) => d.date).sort();
+  if (dates.length) { input.min = dates[0]; input.max = dates[dates.length - 1]; }
+  input.addEventListener("change", () => input.value && select({ date: input.value, stadium: state.stadium, race: null }));
+  $("#prev-day").onclick = () => stepDay(-1);
+  $("#next-day").onclick = () => stepDay(1);
   window.addEventListener("hashchange", () => select(parseHash()));
   const m = index.models.full || index.models.base;
   if (m) {
     $("#model-info").textContent =
-      `モデル学習: ${m.trained_at.slice(0, 10)}（期間 ${m.period[0]}〜${m.period[1]}）／検証期間の本命1着率 ${pct(m.valid.win_top1_accuracy)}`;
+      `モデル学習: ${m.trained_at.slice(0, 10)}（期間 ${m.period[0]}〜${m.period[1]}）`;
   }
   renderSummary();
   if (index.days.length) await select(parseHash());
   else $("#empty").hidden = false;
+}
+
+// データのある前後の日へ移動する
+function stepDay(dir) {
+  const dates = index.days.map((d) => d.date).sort();
+  const i = dates.indexOf(state.date);
+  const next = dates[i + dir];
+  if (next) select({ date: next, stadium: state.stadium, race: null });
+}
+
+function renderSummary() {
+  $("#summary").innerHTML = summaryStats(index.days.filter((d) => !d.backtest));
+  $("#summary-bt").innerHTML = summaryStats(index.days.filter((d) => d.backtest));
+}
+
+function summaryStats(days) {
+  const t = days.reduce(
+    (a, d) => ({
+      scored: a.scored + d.scored, honmei: a.honmei + d.honmei_hits, tri: a.tri + d.trifecta_hits, bet: a.bet + d.bet, ret: a.ret + d.return,
+      evRaces: a.evRaces + (d.ev_races ?? 0), evBet: a.evBet + (d.ev_bet ?? 0), evRet: a.evRet + (d.ev_return ?? 0),
+    }),
+    { scored: 0, honmei: 0, tri: 0, bet: 0, ret: 0, evRaces: 0, evBet: 0, evRet: 0 }
+  );
+  const stats = [
+    ["レース数", t.scored ? `${t.scored.toLocaleString()}<small>（${days.length}日）</small>` : "0"],
+    ["本命 1着率", t.scored ? pct(t.honmei / t.scored) : "-"],
+    [`3連単 ${index.tri_bets}点 的中率`, t.scored ? pct(t.tri / t.scored) : "-"],
+    [`3連単 ${index.tri_bets}点 回収率`, t.bet ? pct(t.ret / t.bet) : "-"],
+    ["期待値買い 回収率", t.evBet ? `${pct(t.evRet / t.evBet)}<small>（${t.evRaces}R）</small>` : "-"],
+  ];
+  return stats.map(([k, v]) => `<div class="stat"><b>${v}</b><span>${k}</span></div>`).join("");
 }
 
 // URL の #日付/場/R で選択状態を共有・ブックマークできるようにする
@@ -36,10 +70,26 @@ function parseHash() {
 }
 
 async function select({ date, stadium, race }) {
-  const entry = index.days.find((d) => d.date === date) ?? index.days[0];
+  const entry = date ? index.days.find((d) => d.date === date) : index.days[0];
+  $("#date").value = date || index.days[0].date;
+  if (!entry) {
+    // カレンダーでデータの無い日を選んだ場合
+    state.date = date;
+    const dates = index.days.map((d) => d.date).sort();
+    $("#stadiums").innerHTML = $("#race-tabs").innerHTML = $("#races").innerHTML = "";
+    $("#day-note").hidden = true;
+    $("#empty").hidden = false;
+    $("#empty").textContent = `${date} の予想はありません（表示できる期間: ${dates[0]} 〜 ${dates[dates.length - 1]}）。`;
+    updateDayButtons();
+    return;
+  }
   if (!day || day.date !== entry.date) day = await getJSON("data/" + entry.file);
   state.date = entry.date;
-  $("#date").value = state.date;
+  $("#empty").textContent = "この日の予想はありません。";
+  const note = $("#day-note");
+  note.hidden = !day.backtest;
+  note.innerHTML = day.backtest ? `<b>検証データ</b> ${day.note ?? ""}` : "";
+  updateDayButtons();
 
   const stadiums = [...new Map(day.races.map((r) => [r.stadium, r.stadium_name])).entries()];
   state.stadium = stadiums.some(([n]) => n === stadium) ? stadium : stadiums[0]?.[0];
@@ -75,38 +125,18 @@ function renderTabs(stadiums, races) {
   }
 }
 
+function updateDayButtons() {
+  const dates = index.days.map((d) => d.date).sort();
+  $("#prev-day").disabled = !dates.some((d) => d < state.date);
+  $("#next-day").disabled = !dates.some((d) => d > state.date);
+}
+
 function tab(html, pressed, onclick) {
   const b = document.createElement("button");
   b.innerHTML = html;
   b.setAttribute("aria-pressed", pressed);
   b.onclick = onclick;
   return b;
-}
-
-function renderSummary() {
-  const t = index.days.reduce(
-    (a, d) => ({
-      scored: a.scored + d.scored, honmei: a.honmei + d.honmei_hits, tri: a.tri + d.trifecta_hits, bet: a.bet + d.bet, ret: a.ret + d.return,
-      evRaces: a.evRaces + (d.ev_races ?? 0), evBet: a.evBet + (d.ev_bet ?? 0), evRet: a.evRet + (d.ev_return ?? 0),
-    }),
-    { scored: 0, honmei: 0, tri: 0, bet: 0, ret: 0, evRaces: 0, evBet: 0, evRet: 0 }
-  );
-  const stats = [
-    ["予想実績レース", t.scored.toLocaleString()],
-    ["本命 1着率", t.scored ? pct(t.honmei / t.scored) : "-"],
-    [`3連単 ${index.tri_bets}点 回収率`, t.bet ? pct(t.ret / t.bet) : "-"],
-    ["期待値買い 回収率", t.evBet ? `${pct(t.evRet / t.evBet)}<small>（${t.evRaces}R）</small>` : "-"],
-  ];
-  // 学習に使っていない直近期間での検証結果（バックテスト）
-  const v = index.models.full?.valid;
-  if (v) {
-    stats.push(
-      ["検証 本命1着率", `${pct(v.win_top1_accuracy)}`],
-      ["検証 1号艇固定", pct(v.baseline_boat1_accuracy)],
-      [`検証 3連単${index.tri_bets}点 回収率`, pct(v[`trifecta_top${index.tri_bets}_roi`])],
-    );
-  }
-  $("#summary").innerHTML = stats.map(([k, v]) => `<div class="stat"><b>${v}</b><span>${k}</span></div>`).join("");
 }
 
 function renderRace(r) {
