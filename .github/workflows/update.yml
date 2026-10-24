@@ -29,6 +29,9 @@ jobs:
       name: github-pages
       url: ${{ steps.deploy.outputs.page_url }}
     steps:
+      # 更新ボタン用 API（Render 無料枠）は15分使われないと停止するので、10分おきに起こしておく
+      - name: wake API
+        run: curl -s -m 10 -o /dev/null https://boatrace-yosou-api.onrender.com/health || true
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:

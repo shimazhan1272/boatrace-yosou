@@ -10,6 +10,7 @@ GitHub Actions が公開している当日の context（過去成績の集計）
 import os
 import threading
 import time
+from concurrent.futures import ThreadPoolExecutor
 from datetime import date, datetime
 
 from fastapi import FastAPI, HTTPException, Query
@@ -34,7 +35,6 @@ PROGRAMS_TTL = 30 * 60
 app = FastAPI(title="boatrace-yosou API")
 app.add_middleware(CORSMiddleware, allow_origins=ALLOWED_ORIGINS, allow_methods=["GET"], allow_headers=["*"])
 
-_lock = threading.Lock()
 _boosters = {}
 _context = {}    # date -> (racers, stadiums)
 _programs = {}   # date -> (fetched, list)
@@ -84,7 +84,7 @@ def _live_odds(d, stadium, race, final=False):
     if hit and (hit[1].get("final") and hit[1]["trifecta"]
                 or not final and time.time() - hit[0] < ODDS_TTL):
         return hit[1]
-    data = odds.fetch_odds(d, stadium, race, final=final)
+    data = odds.fetch_odds(d, stadium, race, final=final, exacta=False)
     _odds[key] = (time.time(), data)
     return data
 
@@ -94,40 +94,50 @@ def health():
     return {"ok": True, "time": datetime.now(JST).isoformat(timespec="seconds")}
 
 
+@app.on_event("startup")
+def _preload():
+    """当日の context とモデルを裏で読み込んでおき、最初のボタン操作を速くする。"""
+    def load():
+        try:
+            _booster("base"), _booster("full")
+            _get_context(today_jst())
+        except Exception:
+            pass
+    threading.Thread(target=load, daemon=True).start()
+
+
 @app.get("/api/race")
 def race(date_: date = Query(alias="date"), stadium: int = Query(ge=1, le=24), race: int = Query(ge=1, le=12)):
     if date_ != today_jst():
         raise HTTPException(400, "更新できるのは当日のレースのみです")
-    with _lock:  # 公式サイトへのアクセスと計算は1件ずつ
-        program = _program(date_, stadium, race)
-        if not program:
-            raise HTTPException(404, "該当レースの出走表がありません")
+    program = _program(date_, stadium, race)
+    if not program:
+        raise HTTPException(404, "該当レースの出走表がありません")
+    now = datetime.now(JST)
+    closed = datetime.strptime(program["race_closed_at"], "%Y-%m-%d %H:%M:%S").replace(tzinfo=JST)
+    is_closed = now >= closed
+
+    # 直前情報とオッズは並行して取る（公式サイトへのリクエスト開始は odds._get が間隔をあける）
+    with ThreadPoolExecutor(2) as pool:
+        f_before = pool.submit(_beforeinfo, date_, stadium, race)
+        f_odds = pool.submit(_live_odds, date_, stadium, race, is_closed)
         rh, sh = _get_context(date_)
         try:
-            preview = _beforeinfo(date_, stadium, race)
+            preview = f_before.result()
         except Exception:
             raise HTTPException(502, "公式サイトから直前情報を取得できませんでした")
-
-        racers = {b["racer_number"] for b in program["boats"]}
-        df = build_frame([program], [preview] if preview else [])
-        df = add_features(df, rh[rh["racer_number"].isin(racers)], sh[sh["stadium"] == stadium])
-        kind = "full" if has_preview(df).all() else "base"
-        df["p"] = model.win_probs(_booster(kind), df, kind)
-        result = _race_prediction(df, kind)
-
-        now = datetime.now(JST)
-        closed = datetime.strptime(program["race_closed_at"], "%Y-%m-%d %H:%M:%S").replace(tzinfo=JST)
         try:
-            if now < closed:
-                book = _live_odds(date_, stadium, race)
-                if book["trifecta"]:
-                    strategy.attach(result, book, book["fetched_at"])
-            else:
-                # 締切後は締切時オッズを表示用に付ける（期待値推奨は締切前のものを画面側で残す）
-                book = _live_odds(date_, stadium, race, final=True)
-                if book["trifecta"]:
-                    strategy.attach_odds(result, book, "締切時")
+            book = f_odds.result()
         except Exception:
-            pass  # オッズが取れなくても予想は返す
-        result["live"] = {"fetched_at": now.strftime("%Y-%m-%d %H:%M:%S"), "exhibition": preview is not None}
-        return result
+            book = None  # オッズが取れなくても予想は返す
+
+    racers = {b["racer_number"] for b in program["boats"]}
+    df = build_frame([program], [preview] if preview else [])
+    df = add_features(df, rh[rh["racer_number"].isin(racers)], sh[sh["stadium"] == stadium])
+    kind = "full" if has_preview(df).all() else "base"
+    df["p"] = model.win_probs(_booster(kind), df, kind)
+    result = _race_prediction(df, kind)
+    if book and book["trifecta"]:
+        strategy.attach_odds(result, book, "締切時" if is_closed else book["fetched_at"])
+    result["live"] = {"fetched_at": now.strftime("%Y-%m-%d %H:%M:%S"), "exhibition": preview is not None}
+    return result

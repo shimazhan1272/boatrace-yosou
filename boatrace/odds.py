@@ -1,9 +1,9 @@
 """ボートレース公式サイトからのオッズ取得。
 
 サイトポリシーで大量アクセスが禁止されているため、
-  - リクエスト間隔を最低 REQUEST_INTERVAL 秒あける
+  - リクエストの開始間隔を最低 REQUEST_INTERVAL 秒あける
   - 締切後（確定）のオッズはキャッシュして二度と取りに行かない
-  - 取得したオッズそのものは公開サイトに転載しない（推奨買い目のオッズのみ表示）
+  - 画面に出すのは3連単の確率上位20点のオッズだけ（2連単は検証用に必要なときだけ取る）
 """
 import json
 import re
@@ -18,26 +18,26 @@ from .config import DATA_DIR, JST
 
 ODDS_URL = "https://www.boatrace.jp/owpc/pc/race/{page}?rno={rno}&jcd={jcd:02d}&hd={hd}"
 ODDS_DIR = DATA_DIR / "odds"
-REQUEST_INTERVAL = 1.5
+REQUEST_INTERVAL = 1.0
 
 _session = requests.Session()
 _session.headers["User-Agent"] = "Mozilla/5.0 (compatible; boatrace-ai/0.1)"
 _lock = threading.Lock()
-_last_request = 0.0
+_next_slot = 0.0
 
 _ODDS_RE = re.compile(r'class="oddsPoint[^"]*">([^<]*)<')
 
 
 def _get(url: str) -> str:
-    global _last_request
+    """リクエストの開始時刻を REQUEST_INTERVAL 秒ずつずらす（応答待ちは並行してよい）。"""
+    global _next_slot
     with _lock:
-        wait = _last_request + REQUEST_INTERVAL - time.monotonic()
-        if wait > 0:
-            time.sleep(wait)
-        try:
-            res = _session.get(url, timeout=30)
-        finally:
-            _last_request = time.monotonic()
+        start = max(time.monotonic(), _next_slot)
+        _next_slot = start + REQUEST_INTERVAL
+    wait = start - time.monotonic()
+    if wait > 0:
+        time.sleep(wait)
+    res = _session.get(url, timeout=30)
     res.raise_for_status()
     return res.text
 
@@ -67,8 +67,12 @@ def parse_odds(html: str, combos: list[str]) -> dict[str, float]:
     return {c: v for c, v in zip(combos, map(_to_float, values)) if v}
 
 
-def fetch_odds(d: date, stadium: int, race_number: int, final: bool, cached_only: bool = False) -> dict:
-    """3連単・2連単オッズ。final=True（締切後）なら確定オッズとしてキャッシュする。"""
+def fetch_odds(d: date, stadium: int, race_number: int, final: bool, cached_only: bool = False,
+               exacta: bool = True) -> dict:
+    """3連単（と2連単）オッズ。final=True（締切後）なら確定オッズとしてキャッシュする。
+
+    exacta=False なら2連単のページは取らない（画面表示は3連単だけなので1リクエストで済む）。
+    """
     path = ODDS_DIR / f"{d:%Y%m%d}" / f"{stadium:02d}_{race_number:02d}.json"
     if path.exists():
         return json.loads(path.read_text(encoding="utf-8"))
@@ -77,7 +81,8 @@ def fetch_odds(d: date, stadium: int, race_number: int, final: bool, cached_only
 
     hd = f"{d:%Y%m%d}"
     tri = parse_odds(_get(ODDS_URL.format(page="odds3t", rno=race_number, jcd=stadium, hd=hd)), TRIFECTA_COMBOS)
-    ex = parse_odds(_get(ODDS_URL.format(page="odds2tf", rno=race_number, jcd=stadium, hd=hd)), EXACTA_COMBOS)
+    ex = parse_odds(_get(ODDS_URL.format(page="odds2tf", rno=race_number, jcd=stadium, hd=hd)),
+                    EXACTA_COMBOS) if exacta else {}
     data = {
         "fetched_at": datetime.now(JST).strftime("%Y-%m-%d %H:%M:%S"),
         "final": final,

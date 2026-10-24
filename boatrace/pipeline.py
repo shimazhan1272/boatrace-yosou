@@ -281,7 +281,7 @@ def _attach_ev(race: dict, d: date, now: datetime):
     if not now < closed <= now + timedelta(minutes=ODDS_WINDOW_MIN):
         return
     try:
-        book = odds.fetch_odds(d, race["stadium"], race["race_number"], final=False)
+        book = odds.fetch_odds(d, race["stadium"], race["race_number"], final=False, exacta=False)
     except Exception as e:  # オッズが取れなくても予想自体は出す
         print(f"  odds failed {race['race_id']}: {e}")
         return
@@ -300,7 +300,7 @@ def _attach_final_odds(races: list[dict], d: date, now: str):
     pending.sort(key=lambda r: r["closed_at"], reverse=True)  # 締切直後のレースを優先
     for race in pending[:FINAL_ODDS_PER_RUN]:
         try:
-            book = odds.fetch_odds(d, race["stadium"], race["race_number"], final=True)
+            book = odds.fetch_odds(d, race["stadium"], race["race_number"], final=True, exacta=False)
         except Exception as e:
             print(f"  final odds failed {race['race_id']}: {e}")
             continue

@@ -1,7 +1,6 @@
 const $ = (s, el = document) => el.querySelector(s);
 const pct = (v) => (v == null ? "-" : (v * 100).toFixed(1) + "%");
 const yen = (v) => v.toLocaleString("ja-JP") + "円";
-const BET_TYPES = { trifecta: "3連単", exacta: "2連単" };
 // "1-2-3" → 艇番カラーの丸数字を「-」でつないだ表示
 const combo = (c) => `<span class="combo">${c.split("-").map((n) => `<span class="ball l${n}">${n}</span>`).join('<span class="sep">-</span>')}</span>`;
 const ODDS_WINDOW = 25;
@@ -57,7 +56,6 @@ async function refresh() {
         const i = day.races.findIndex((r) => r.stadium === state.stadium && r.race_number === state.race);
         if (i >= 0) {
           body.result = day.races[i].result;  // 結果は公開データ側のものを使う
-          if (!body.ev && day.races[i].ev) body.ev = day.races[i].ev;  // 締切後は締切前の期待値推奨を残す
         }
         if (i >= 0) day.races[i] = body; else day.races.push(body);
         await select({ ...state });
@@ -151,7 +149,6 @@ function renderTabs(stadiums, races) {
     const label = `<b>${r.race_number}R</b><small>${r.closed_at?.slice(11, 16) ?? ""}</small>`;
     const b = tab(label, r.race_number === state.race, () => select({ ...state, race: r.race_number }));
     if (r.result) b.classList.add("done");
-    if (r.result?.return > 0 || r.result?.ev_return > 0) b.classList.add("won");
     rnav.append(b);
   }
 }
@@ -204,7 +201,7 @@ function renderRace(r) {
 
     const res = r.result;
     const hitCombos = new Set(res?.trifecta ?? []);
-    // 3連単上位20点: 出現確率・オッズ・期待値（= 出現確率 × オッズ）
+    // 3連単上位20点: 出現確率・オッズ・期待値（= 出現確率 × オッズ、%表示。100%超は払戻の期待が掛け金を上回る）
     const odds = r.odds?.trifecta ?? {};
     const head = `<li class="tri-head"><span class="rank">順</span><span>組番</span><span class="p">確率</span><span class="o">オッズ</span><span class="ev">期待値</span></li>`;
     const rows = r.trifecta.slice(0, 20).map(([c, p], i) => {
@@ -212,7 +209,7 @@ function renderRace(r) {
       const ev = o ? p * o : null;
       return `<li class="${hitCombos.has(c) ? "hit" : ""}"><span class="rank">${i + 1}</span>${combo(c)}`
         + `<span class="p">${pct(p)}</span><span class="o">${o ? o.toFixed(1) : "-"}</span>`
-        + `<span class="ev ${ev >= 1 ? "plus" : ""}">${ev ? ev.toFixed(2) : "-"}</span></li>`;
+        + `<span class="ev ${ev >= 1 ? "plus" : ""}">${ev ? Math.round(ev * 100) + "%" : "-"}</span></li>`;
     });
     // PC は 1〜10位 / 11〜20位 の2列（各列に見出し）、スマホは1列
     $(".tri", el).innerHTML = head + rows.slice(0, 10).join("") + head.replace("tri-head", "tri-head second") + rows.slice(10).join("");
@@ -222,32 +219,11 @@ function renderRace(r) {
         : `オッズ: ${r.odds.at.slice(11, 16)} 時点（最新は公式サイトで確認してください）`)
       : (r.result ? "オッズ未取得" : `オッズは締切${ODDS_WINDOW}分前から自動取得。↻ 更新でいつでも取得できます`);
 
-    const ev = r.ev;
-    const evList = $(".ev-list", el);
-    if (!ev) {
-      const closed = r.result || r.closed_at <= new Date(Date.now() + 9 * 3600e3).toISOString().replace("T", " ");
-      evList.innerHTML = `<li class="muted">${closed ? "オッズ未取得（対象外）" : `締切${ODDS_WINDOW}分前から表示`}</li>`;
-    } else if (!ev.picks.length) {
-      evList.innerHTML = `<li class="muted">期待値の高い買い目なし（見送り）</li>`;
-    } else {
-      const hitSet = new Set([...(res?.trifecta ?? []), res && res.order.slice(0, 2).join("-")]);
-      evList.innerHTML = ev.picks.map((p) => `
-        <li class="${hitSet.has(p.combo) ? "hit" : ""}">
-          <span class="bt">${BET_TYPES[p.type]}</span> ${combo(p.combo)}
-          <small class="muted">${p.odds.toFixed(1)}倍 × ${pct(p.prob)} = 期待値 ${p.ev.toFixed(2)}</small>
-        </li>`).join("") + `<li class="muted asof">オッズ ${ev.odds_at.slice(11, 16)} 時点</li>`;
-    }
-
     if (res) {
-      const hit = res.return > 0;
       $(".result", el).innerHTML = `
         <h3>結果</h3>
-        <div>着順 <b>${res.order.join("-")}</b>（3連単 ${yen(res.trifecta_payout)}）</div>
-        <div>本命: <span class="${res.honmei_hit ? "hit" : "miss"}">${res.honmei_hit ? "1着" : "外れ"}</span></div>
-        <div>推奨${index.tri_bets}点: <span class="${hit ? "hit" : "miss"}">${hit ? "的中 " + yen(res.return) : "外れ"}</span>
-          <small class="muted">（予想${res.trifecta_rank ?? "圏外"}番手）</small></div>
-        ${res.ev_bet ? `<div>期待値: <span class="${res.ev_return ? "hit" : "miss"}">${res.ev_return ? "的中 " + yen(res.ev_return) : "外れ"}</span>
-          <small class="muted">（${yen(res.ev_bet)}購入）</small></div>` : ""}`;
+        <div>着順 ${combo(res.order.join("-"))}　3連単 ${yen(res.trifecta_payout)}
+          <small class="muted">（予想${res.trifecta_rank ? res.trifecta_rank + "番手" : "21番手以下"}）</small></div>`;
     }
     box.append(el);
   }

@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>ボートレースAI予想</title>
 <meta name="description" content="Boatrace Open API のデータを使った機械学習によるボートレース予想">
-<link rel="stylesheet" href="style.css?v=11">
+<link rel="stylesheet" href="style.css?v=12">
 </head>
 <body>
 <header>
@@ -35,7 +35,7 @@
 </main>
 
 <footer class="wrap muted">
-  <p>データ: <a href="https://github.com/BoatraceOpenAPI">Boatrace Open API</a>、オッズ: <a href="https://www.boatrace.jp/">BOATRACE公式サイト</a>（推奨買い目の取得時点オッズのみ掲載。最新のオッズは公式サイトでご確認ください）。
+  <p>データ: <a href="https://github.com/BoatraceOpenAPI">Boatrace Open API</a>、オッズ・直前情報: <a href="https://www.boatrace.jp/">BOATRACE公式サイト</a>（取得時点の値です。最新のオッズは公式サイトでご確認ください）。
   予想は統計モデルの出力であり、的中や利益を保証するものではありません。舟券の購入は自己責任で、20歳以上の方に限られます。</p>
   <p id="model-info"></p>
 </footer>
@@ -64,18 +64,16 @@
         <dt>3着内</dt><dd>3着以内に入る確率。</dd>
         <dt>イン1着率</dt><dd>このレース場で過去1年に1コースの艇が1着になった割合。</dd>
         <dt>出走表のみ / 直前情報あり</dt><dd>予想に展示タイム・進入コースなどの直前情報を使ったかどうか。展示後に「↻ 更新」を押すと直前情報ありの予想に切り替わる。「↻ 更新」はオッズも公式サイトから取り直す（締切前は60秒以内なら前回の取得結果を使う。締切後は締切時オッズ）。</dd>
-        <dt>3連単 確率上位20点</dt><dd>1着確率から計算した3連単の各組み合わせの出現確率の上位20点と、そのオッズ・期待値（出現確率 × オッズ。1以上は払戻の期待が掛け金を上回る）。</dd>
-        <dt>期待値 推奨</dt><dd>3連単・2連単の全組み合わせから、期待値（出現確率 × オッズ）が1.2以上で出現確率1%以上の買い目を期待値の高い順に最大3点。</dd>
+        <dt>3連単 確率上位20点</dt><dd>1着確率から計算した3連単の各組み合わせの出現確率の上位20点と、そのオッズ・期待値（出現確率 × オッズを%で表示。100%を超えると払戻の期待が掛け金を上回る）。</dd>
       </dl>
     </details>
     <div class="tri-box"><h3>3連単 確率上位20点 <small class="odds-note muted"></small></h3><ol class="tri"></ol></div>
     <div class="picks">
-      <div class="ev"><h3>期待値 推奨</h3><ul class="ev-list"></ul></div>
       <div class="result"></div>
     </div>
   </article>
 </template>
 
-<script src="app.js?v=11"></script>
+<script src="app.js?v=12"></script>
 </body>
 </html>

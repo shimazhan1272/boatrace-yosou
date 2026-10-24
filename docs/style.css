@@ -90,7 +90,7 @@ select { font: inherit; padding: 6px 10px; border-radius: 8px; border: 1px solid
 .tri-box .tri .p, .tri-box .tri .o, .tri-box .tri .ev { text-align: right; }
 .tri-box .tri .ev.plus { color: var(--hit); font-weight: 700; }
 .tri-box .tri li.hit { background: color-mix(in srgb, var(--hit) 14%, transparent); border-radius: 4px; }
-.picks { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 12px; }
+.picks { margin-top: 12px; }
 .ev-list { margin: 0; padding: 0; list-style: none; font-variant-numeric: tabular-nums; }
 .ev-list li { padding: 1px 0; }
 .ev-list li small { display: block; font-size: 11px; }
