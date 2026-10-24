@@ -1,4 +1,5 @@
-# 毎朝 06:00 JST: 前日分の過去データ（出走表・直前情報・結果）を取り込み、前日の予想の結果を確定させる
+# 毎朝 06:00 JST: 前日分の過去データ（出走表・直前情報・結果）を取り込み、前日の予想の結果を確定させる。
+# あわせてオッズの無い過去レースの締切時オッズを1日400件までさかのぼって取得する
 name: daily data
 
 on:
@@ -18,7 +19,7 @@ concurrency:
 jobs:
   daily:
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 90
     environment:
       name: github-pages
       url: ${{ steps.deploy.outputs.page_url }}

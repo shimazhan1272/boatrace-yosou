@@ -1,5 +1,6 @@
 """学習・検証・当日予測・サイト用JSON出力。"""
 import json
+import time
 from datetime import date, datetime, timedelta
 
 import numpy as np
@@ -511,6 +512,54 @@ def build_index():
     (SITE_DATA_DIR / "index.json").write_text(json.dumps(index, ensure_ascii=False, indent=1), encoding="utf-8")
 
 
+PAST_ODDS_PER_DAY = 400       # 毎朝さかのぼって取得する過去レースのオッズ件数
+PAST_ODDS_TIME_BUDGET = 45 * 60
+
+
+def backfill_past_odds(limit: int = PAST_ODDS_PER_DAY, time_budget: float = PAST_ODDS_TIME_BUDGET) -> int:
+    """オッズの無い過去レースに締切時オッズを付ける（新しい日から順に、1日あたり limit 件まで）。
+
+    公式サイトへの負荷を抑えるため3連単のページだけ取り、リクエストの開始間隔は odds._get が空ける。
+    """
+    from concurrent.futures import ThreadPoolExecutor
+
+    start = time.monotonic()
+    done = 0
+    for path in sorted((SITE_DATA_DIR / "predictions").glob("*.json"), reverse=True):
+        if done >= limit or time.monotonic() - start > time_budget:
+            break
+        data = json.loads(path.read_text(encoding="utf-8"))
+        d = date.fromisoformat(data["date"])
+        if d >= today_jst():
+            continue
+        todo = [r for r in data["races"] if "odds" not in r and not r.get("final_odds_checked")][: limit - done]
+        if not todo:
+            continue
+
+        def fetch(race):
+            if time.monotonic() - start > time_budget:
+                return race, None
+            try:
+                return race, odds.fetch_odds(d, race["stadium"], race["race_number"], final=True, exacta=False)
+            except Exception as e:
+                print(f"  past odds failed {race['race_id']}: {e}")
+                return race, None
+
+        got = 0
+        with ThreadPoolExecutor(3) as pool:
+            for race, book in pool.map(fetch, todo):
+                if book is None:
+                    continue
+                race["final_odds_checked"] = True
+                if book["trifecta"]:
+                    strategy.attach_odds(race, book, "締切時")
+                    got += 1
+        done += len(todo)
+        path.write_text(json.dumps(data, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
+        print(f"  past odds {d}: {got}/{len(todo)} races")
+    return done
+
+
 def daily(d: date | None = None):
     """毎朝の定期実行: 前日分の過去データを取り込み、前日の予想に結果と締切時オッズを確定させる。
 
@@ -528,8 +577,10 @@ def daily(d: date | None = None):
         data = predict_day(yesterday, final_odds_limit=None)
         scored = sum("result" in r for r in data["races"])
         print(f"{yesterday}: results for {scored}/{len(data['races'])} races")
-    build_index()
     publish_context(today)
+    # 過去レースのオッズを少しずつさかのぼって取得する
+    backfill_past_odds()
+    build_index()
 
 
 def update(d: date | None = None):
