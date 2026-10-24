@@ -1,5 +1,5 @@
 {
- "updated_at": "2026-10-24 23:55:55",
+ "updated_at": "2026-10-25 00:05:30",
  "tri_bets": 5,
  "days": [
   {
@@ -12,10 +12,10 @@
    "trifecta_hits": 48,
    "bet": 80000,
    "return": 45800,
-   "ev_races": 0,
-   "ev_hits": 0,
-   "ev_bet": 0,
-   "ev_return": 0
+   "ev_races": 160,
+   "ev_hits": 6,
+   "ev_bet": 48000,
+   "ev_return": 16530
   },
   {
    "date": "2026-10-23",
@@ -27,10 +27,10 @@
    "trifecta_hits": 53,
    "bet": 84000,
    "return": 64420,
-   "ev_races": 0,
-   "ev_hits": 0,
-   "ev_bet": 0,
-   "ev_return": 0
+   "ev_races": 75,
+   "ev_hits": 4,
+   "ev_bet": 22500,
+   "ev_return": 42650
   },
   {
    "date": "2026-10-22",
@@ -42,10 +42,10 @@
    "trifecta_hits": 54,
    "bet": 84000,
    "return": 60320,
-   "ev_races": 0,
-   "ev_hits": 0,
-   "ev_bet": 0,
-   "ev_return": 0
+   "ev_races": 167,
+   "ev_hits": 6,
+   "ev_bet": 49700,
+   "ev_return": 41050
   },
   {
    "date": "2026-10-21",
@@ -57,9 +57,9 @@
    "trifecta_hits": 46,
    "bet": 72000,
    "return": 57250,
-   "ev_races": 133,
+   "ev_races": 144,
    "ev_hits": 5,
-   "ev_bet": 39900,
+   "ev_bet": 43200,
    "ev_return": 22010
   },
   {
