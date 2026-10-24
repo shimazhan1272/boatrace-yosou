@@ -578,6 +578,10 @@ def daily(d: date | None = None):
         scored = sum("result" in r for r in data["races"])
         print(f"{yesterday}: results for {scored}/{len(data['races'])} races")
     publish_context(today)
+    # 当日の予想（出走表ベース）を朝のうちに作っておく。直前情報・オッズは10分おきの更新と画面の自動取得で入る
+    data = predict_day(today)
+    print(f"{today}: {len(data['races'])} races predicted")
+    build_index()
     # 過去レースのオッズを少しずつさかのぼって取得する
     backfill_past_odds()
     build_index()
