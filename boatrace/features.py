@@ -232,17 +232,27 @@ def add_racer_features(df: pd.DataFrame, h: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
-def add_course_features(df: pd.DataFrame, h: pd.DataFrame, key: str, sfx: str) -> pd.DataFrame:
+STADIUM_COLS = ["one", "win", "top2", "top3", "ex_n", "ex_dev"] + [f"win_{n}" for n in TECHNIQUES.values()]
+
+
+def stadium_daily(h: pd.DataFrame) -> pd.DataFrame:
+    """場×コース×日 の合計（場×コース集計はこれだけあれば計算できる）。"""
+    return h.groupby(["stadium", "course", "date"], as_index=False)[STADIUM_COLS].sum()
+
+
+def add_course_features(df: pd.DataFrame, h: pd.DataFrame, key: str, sfx: str,
+                        stadium_h: pd.DataFrame | None = None) -> pd.DataFrame:
     """コースに依存する特徴量。key はそのレースで想定するコースの列。
 
     base モデルは枠番(枠なり想定)、full モデルは展示の進入コースを使う。
     """
     df["_k"] = df[key].fillna(df["boat"]).astype(int)
     hk = h.rename(columns={"course": "_k"})
+    sk = hk if stadium_h is None else stadium_h.rename(columns={"course": "_k"})
 
     # 場×コース: 入着率と決まり手、展示タイムの癖
     tech_cols = [f"win_{n}" for n in TECHNIQUES.values()]
-    s = _rolling_sum(hk, ["stadium", "_k"], ["one", "win", "top2", "top3", "ex_n", "ex_dev"] + tech_cols,
+    s = _rolling_sum(sk, ["stadium", "_k"], STADIUM_COLS,
                      COURSE_WINDOW, df)
     sc = pd.DataFrame({"stadium": s["stadium"], "_k": s["_k"], "date": s["date"],
                        f"sc_win{sfx}": _ratio(s["win"], s["one"], 30),
@@ -305,12 +315,13 @@ def add_relative_features(df: pd.DataFrame) -> pd.DataFrame:
     return pd.concat([df, pd.DataFrame(new, index=df.index)], axis=1)
 
 
-def add_features(df: pd.DataFrame, history: pd.DataFrame) -> pd.DataFrame:
+def add_features(df: pd.DataFrame, history: pd.DataFrame,
+                 stadium_history: pd.DataFrame | None = None) -> pd.DataFrame:
     """build_frame の出力に全特徴量を付与する。history は予測日より前の結果を含むこと。"""
     df = add_racer_features(df, history)
     df["course_est"] = df["course"].fillna(df["boat"])
-    df = add_course_features(df, history, "boat", "_b")
-    df = add_course_features(df, history, "course_est", "_c")
+    df = add_course_features(df, history, "boat", "_b", stadium_history)
+    df = add_course_features(df, history, "course_est", "_c", stadium_history)
     return add_relative_features(df)
 
 

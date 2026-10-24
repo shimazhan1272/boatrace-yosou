@@ -3,6 +3,9 @@ const pct = (v) => (v == null ? "-" : (v * 100).toFixed(1) + "%");
 const yen = (v) => v.toLocaleString("ja-JP") + "円";
 const BET_TYPES = { trifecta: "3連単", exacta: "2連単" };
 const ODDS_WINDOW = 25;
+// 更新ボタンで直前情報をその場で取得する API（Render）
+const API_BASE = new URLSearchParams(location.search).get("api") || "https://boatrace-yosou-api.onrender.com";
+const todayJST = () => new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 10);
 
 let index, day;
 const state = { date: null, stadium: null, race: null };
@@ -29,23 +32,45 @@ async function init() {
     $("#model-info").textContent =
       `モデル学習: ${m.trained_at.slice(0, 10)}（期間 ${m.period[0]}〜${m.period[1]}）`;
   }
+  // 無料枠の API は停止していることがあるので、ページを開いた時点で起こしておく
+  if (API_BASE) fetch(`${API_BASE}/health`).catch(() => {});
   if (index.days.length) await select(parseHash());
   else $("#empty").hidden = false;
 }
 
-// 更新ボタン: 最新の予想データ（定期実行で取得した直前情報を含む）を読み直す
+// 更新ボタン: 当日のレースは API で直前情報・オッズを取り直して予想し直す。
+// それ以外（過去日・API が使えない時）は公開データを読み直す。
 async function refresh() {
   const btn = $("#refresh");
-  const before = day?.updated_at;
+  const msg = $("#update-msg");
   btn.disabled = true;
   btn.textContent = "更新中…";
   try {
+    if (API_BASE && state.date === todayJST() && state.race) {
+      const slow = setTimeout(() => (msg.textContent = "サーバー起動中（最大1分ほどかかります）…"), 4000);
+      try {
+        const res = await fetch(`${API_BASE}/api/race?date=${state.date}&stadium=${state.stadium}&race=${state.race}`);
+        const body = await res.json();
+        if (!res.ok) throw new Error(body.detail || res.status);
+        const i = day.races.findIndex((r) => r.stadium === state.stadium && r.race_number === state.race);
+        if (i >= 0) body.result = day.races[i].result;  // 結果は公開データ側のものを使う
+        if (i >= 0) day.races[i] = body; else day.races.push(body);
+        await select({ ...state });
+        msg.textContent = body.live.exhibition
+          ? `直前情報 ${body.live.fetched_at.slice(11, 16)} 取得`
+          : `展示前のため出走表のみで予想（${body.live.fetched_at.slice(11, 16)}）`;
+        return;
+      } finally {
+        clearTimeout(slow);
+      }
+    }
+    const before = day?.updated_at;
     index = await getJSON("data/index.json", Date.now());
     day = null;
     await select({ ...state });
-    $("#update-msg").textContent = day && day.updated_at !== before ? "最新データを反映しました" : "新しいデータはまだありません";
+    msg.textContent = day && day.updated_at !== before ? "最新データを反映しました" : "新しいデータはまだありません";
   } catch (e) {
-    $("#update-msg").textContent = "更新に失敗しました";
+    msg.textContent = "更新に失敗しました: " + e.message;
   } finally {
     btn.disabled = false;
     btn.textContent = "↻ 更新";

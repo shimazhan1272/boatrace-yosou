@@ -477,3 +477,6 @@ def update(d: date | None = None):
         data = predict_day(day)
         print(f"{day}: {len(data['races'])} races")
     build_index()
+    # 更新ボタン用 API（Render）が読む当日の過去データ集計
+    from .context import publish_context
+    publish_context(d)

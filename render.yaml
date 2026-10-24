@@ -1,0 +1,23 @@
+# Render Blueprint: 更新ボタン用の予想 API
+# Render のダッシュボードで New → Blueprint からこのリポジトリを選ぶと作成される。
+services:
+  - type: web
+    name: boatrace-yosou-api
+    runtime: python
+    plan: free
+    region: singapore
+    buildCommand: pip install -r requirements-api.txt
+    startCommand: uvicorn boatrace.api:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    autoDeploy: true
+    # 予想データの自動コミット（10分おき）では再デプロイしない
+    buildFilter:
+      paths:
+        - boatrace/**
+        - models/**
+        - requirements.txt
+        - requirements-api.txt
+        - render.yaml
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.7
