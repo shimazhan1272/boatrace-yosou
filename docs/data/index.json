@@ -1,7 +1,22 @@
 {
- "updated_at": "2026-10-24 21:17:03",
+ "updated_at": "2026-10-24 21:25:36",
  "tri_bets": 5,
  "days": [
+  {
+   "date": "2026-10-24",
+   "file": "predictions/20261024.json",
+   "backtest": true,
+   "races": 168,
+   "scored": 160,
+   "honmei_hits": 95,
+   "trifecta_hits": 48,
+   "bet": 80000,
+   "return": 45800,
+   "ev_races": 0,
+   "ev_hits": 0,
+   "ev_bet": 0,
+   "ev_return": 0
+  },
   {
    "date": "2026-10-23",
    "file": "predictions/20261023.json",
