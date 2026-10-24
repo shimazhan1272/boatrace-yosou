@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>ボートレースAI予想</title>
 <meta name="description" content="Boatrace Open API のデータを使った機械学習によるボートレース予想">
-<link rel="stylesheet" href="style.css?v=9">
+<link rel="stylesheet" href="style.css?v=10">
 </head>
 <body>
 <header>
@@ -63,7 +63,7 @@
         <dt>2着内</dt><dd>2着以内に入る確率。</dd>
         <dt>3着内</dt><dd>3着以内に入る確率。</dd>
         <dt>イン1着率</dt><dd>このレース場で過去1年に1コースの艇が1着になった割合。</dd>
-        <dt>出走表のみ / 直前情報あり</dt><dd>予想に展示タイム・進入コースなどの直前情報を使ったかどうか。展示後に「↻ 更新」を押すと直前情報ありの予想に切り替わる。</dd>
+        <dt>出走表のみ / 直前情報あり</dt><dd>予想に展示タイム・進入コースなどの直前情報を使ったかどうか。展示後に「↻ 更新」を押すと直前情報ありの予想に切り替わる。「↻ 更新」は締切前ならオッズも公式サイトから取り直す（同じレースは60秒以内なら前回の取得結果を使う）。</dd>
         <dt>3連単 確率上位20点</dt><dd>1着確率から計算した3連単の各組み合わせの出現確率の上位20点と、そのオッズ・期待値（出現確率 × オッズ。1以上は払戻の期待が掛け金を上回る）。</dd>
         <dt>期待値 推奨</dt><dd>3連単・2連単の全組み合わせから、期待値（出現確率 × オッズ）が1.2以上で出現確率1%以上の買い目を期待値の高い順に最大3点。</dd>
       </dl>
@@ -76,6 +76,6 @@
   </article>
 </template>
 
-<script src="app.js?v=9"></script>
+<script src="app.js?v=10"></script>
 </body>
 </html>

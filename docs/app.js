@@ -58,9 +58,11 @@ async function refresh() {
         if (i >= 0) body.result = day.races[i].result;  // 結果は公開データ側のものを使う
         if (i >= 0) day.races[i] = body; else day.races.push(body);
         await select({ ...state });
-        msg.textContent = body.live.exhibition
-          ? `直前情報 ${body.live.fetched_at.slice(11, 16)} 取得`
-          : `展示前のため出走表のみで予想（${body.live.fetched_at.slice(11, 16)}）`;
+        const t = body.live.fetched_at.slice(11, 16);
+        const what = body.live.exhibition ? "直前情報" : "出走表のみ（展示前）";
+        msg.textContent = body.odds
+          ? `${what}・オッズ ${body.odds.at.slice(11, 16)} 取得`
+          : `${what} ${t} 取得（締切後のためオッズは更新なし）`;
         return;
       } finally {
         clearTimeout(slow);
