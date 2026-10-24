@@ -66,6 +66,8 @@ select { font: inherit; padding: 6px 10px; border-radius: 8px; border: 1px solid
 .boats .cls { font-size: 11px; color: var(--muted); margin-left: 4px; }
 .boats td small { font-size: 11px; margin-left: 2px; }
 .boats .good { color: var(--hit); }
+.boats .moved { display: inline-block; min-width: 1.6em; text-align: center; padding: 0 4px; border-radius: 4px; font-weight: 700; color: #fff; background: #d9480f; }
+.badge.moved-badge { border-color: #d9480f; color: #d9480f; }
 .lane { display: inline-grid; place-items: center; width: 24px; height: 24px; border-radius: 4px; font-weight: 700; border: 1px solid #999; }
 .l1 { background: var(--b1); color: #000; } .l2 { background: var(--b2); color: #fff; } .l3 { background: var(--b3); color: #fff; }
 .l4 { background: var(--b4); color: #fff; } .l5 { background: var(--b5); color: #000; } .l6 { background: var(--b6); color: #fff; }
@@ -122,7 +124,7 @@ select { font: inherit; padding: 6px 10px; border-radius: 8px; border: 1px solid
   .picker-label { padding-top: 0; }
   .picker .tabs { width: 100%; }
   .races-tabs { grid-template-columns: repeat(6, 1fr); }
-  .boats { min-width: 600px; border-collapse: separate; border-spacing: 0; }
+  .boats { min-width: 640px; border-collapse: separate; border-spacing: 0; }
   .boats .name { white-space: nowrap; }
   .boats th:nth-child(1), .boats td:nth-child(1) {
     position: sticky; left: 0; z-index: 1; background: var(--card);

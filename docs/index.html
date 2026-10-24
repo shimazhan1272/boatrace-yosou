@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>ボートレースAI予想</title>
 <meta name="description" content="Boatrace Open API のデータを使った機械学習によるボートレース予想">
-<link rel="stylesheet" href="style.css?v=17">
+<link rel="stylesheet" href="style.css?v=18">
 </head>
 <body>
 <header>
@@ -48,7 +48,7 @@
     </header>
     <div class="table-scroll">
     <table class="boats">
-      <thead><tr><th>枠</th><th>選手</th><th class="num hide-sm">勝率</th><th class="num hide-sm" title="今節の平均着順（走数）">今節</th><th class="num hide-sm" title="今節・直近・コース別から推定したスタートタイミング">予想ST</th><th class="num hide-sm" title="展示タイム（括弧内はコース補正後のレース内偏差、マイナスほど良い）">展示</th><th>1着確率</th><th class="num">2着内</th><th class="num">3着内</th></tr></thead>
+      <thead><tr><th>枠</th><th class="num" title="スタート展示での進入コース">進入</th><th>選手</th><th class="num hide-sm">勝率</th><th class="num hide-sm" title="今節の平均着順（走数）">今節</th><th class="num hide-sm" title="今節・直近・コース別から推定したスタートタイミング">予想ST</th><th class="num hide-sm" title="展示タイム（括弧内はコース補正後のレース内偏差、マイナスほど良い）">展示</th><th>1着確率</th><th class="num">2着内</th><th class="num">3着内</th></tr></thead>
       <tbody></tbody>
     </table>
     </div>
@@ -57,6 +57,7 @@
       <summary>項目の説明</summary>
       <dl>
         <dt>枠</dt><dd>艇番（枠番）。色は艇番ごとの公式カラー。</dd>
+        <dt>進入</dt><dd>スタート展示での進入コース。枠番と違う場合（前づけ等）は色付きで強調し、見出しに「進入変化」と表示。直前情報ありの予想は、コース別成績・イン1着率・内側の艇とのST差・展示タイムのコース補正をすべて進入コースで計算している。本番で展示と違う進入になる場合もある。展示前は「-」。</dd>
         <dt>選手</dt><dd>選手名と級別（A1 → A2 → B1 → B2 の順に上位）。</dd>
         <dt>勝率</dt><dd>全国勝率。1着10点・2着8点・3着6点・4着4点・5着2点・6着1点の1走あたり平均点（今期の成績）。</dd>
         <dt>今節</dt><dd>いま開催中の節（同じレース場で4〜7日間続くシリーズ）で、前日までに走ったレースの平均着順。括弧内は走った回数。小さいほど好調。節の初日は「-」。</dd>
@@ -77,6 +78,6 @@
   </article>
 </template>
 
-<script src="app.js?v=17"></script>
+<script src="app.js?v=18"></script>
 </body>
 </html>

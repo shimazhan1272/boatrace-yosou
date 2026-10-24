@@ -216,6 +216,8 @@ function renderRace(r) {
     const badge = $(".model", el);
     badge.textContent = r.model === "full" ? "直前情報あり" : "出走表のみ";
     badge.classList.add(r.model);
+    const moved = r.boats.some((b) => b.course != null && b.course !== b.boat);
+    if (moved) badge.insertAdjacentHTML("afterend", ' <span class="badge moved-badge">進入変化</span>');
     $(".closed", el).textContent = [
       r.stadium_in != null ? `イン1着率 ${pct(r.stadium_in)}` : "",
       r.closed_at ? "締切 " + r.closed_at.slice(11, 16) : "",
@@ -225,6 +227,8 @@ function renderRace(r) {
     $("tbody", el).innerHTML = r.boats.map((b) => `
       <tr>
         <td><span class="lane l${b.boat}">${b.boat}</span></td>
+        <td class="num">${b.course == null ? "-" : b.course === b.boat
+          ? b.course : `<span class="moved" title="${b.boat}号艇が${b.course}コースから進入">${b.course}</span>`}</td>
         <td class="name">${b.name}<span class="cls">${b.class}</span></td>
         <td class="num hide-sm">${b.nat_win?.toFixed(2) ?? "-"}</td>
         <td class="num hide-sm">${b.meet_place != null ? `${b.meet_place.toFixed(2)}<small class="muted">(${b.meet_races})</small>` : "-"}</td>
