@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>ボートレースAI予想</title>
 <meta name="description" content="Boatrace Open API のデータを使った機械学習によるボートレース予想">
-<link rel="stylesheet" href="style.css?v=18">
+<link rel="stylesheet" href="style.css?v=19">
 </head>
 <body>
 <header>
@@ -48,16 +48,20 @@
     </header>
     <div class="table-scroll">
     <table class="boats">
-      <thead><tr><th>枠</th><th class="num" title="スタート展示での進入コース">進入</th><th>選手</th><th class="num hide-sm">勝率</th><th class="num hide-sm" title="今節の平均着順（走数）">今節</th><th class="num hide-sm" title="今節・直近・コース別から推定したスタートタイミング">予想ST</th><th class="num hide-sm" title="展示タイム（括弧内はコース補正後のレース内偏差、マイナスほど良い）">展示</th><th>1着確率</th><th class="num">2着内</th><th class="num">3着内</th></tr></thead>
+      <thead><tr><th>枠</th><th>選手</th><th class="num hide-sm">勝率</th><th class="num hide-sm" title="今節の平均着順（走数）">今節</th><th class="num hide-sm" title="今節・直近・コース別から推定したスタートタイミング">予想ST</th><th class="num hide-sm" title="展示タイム（括弧内はコース補正後のレース内偏差、マイナスほど良い）">展示</th><th class="num">1着確率</th><th class="num">2着内</th><th class="num">3着内</th></tr></thead>
       <tbody></tbody>
     </table>
     </div>
     <p class="scroll-hint">← 表は横にスクロールできます →</p>
+    <div class="start-ex">
+      <h3>スタート展示</h3>
+      <div class="st-head"><span>コース</span><span>並び</span><span>ST</span></div>
+      <div class="st-rows"></div>
+    </div>
     <details class="legend">
       <summary>項目の説明</summary>
       <dl>
         <dt>枠</dt><dd>艇番（枠番）。色は艇番ごとの公式カラー。</dd>
-        <dt>進入</dt><dd>スタート展示での進入コース。枠番と違う場合（前づけ等）は色付きで強調し、見出しに「進入変化」と表示。直前情報ありの予想は、コース別成績・イン1着率・内側の艇とのST差・展示タイムのコース補正をすべて進入コースで計算している。本番で展示と違う進入になる場合もある。展示前は「-」。</dd>
         <dt>選手</dt><dd>選手名と級別（A1 → A2 → B1 → B2 の順に上位）。</dd>
         <dt>勝率</dt><dd>全国勝率。1着10点・2着8点・3着6点・4着4点・5着2点・6着1点の1走あたり平均点（今期の成績）。</dd>
         <dt>今節</dt><dd>いま開催中の節（同じレース場で4〜7日間続くシリーズ）で、前日までに走ったレースの平均着順。括弧内は走った回数。小さいほど好調。節の初日は「-」。</dd>
@@ -66,18 +70,31 @@
         <dt>1着確率</dt><dd>AI が予想した1着になる確率（6艇の合計100%）。</dd>
         <dt>2着内</dt><dd>2着以内に入る確率。</dd>
         <dt>3着内</dt><dd>3着以内に入る確率。</dd>
+        <dt>スタート展示</dt><dd>直前情報のスタート展示。上から1コース〜6コースの順に、そのコースに入った艇（枠番の色）と展示ST（秒）。艇の位置はSTの早さを表し、右端の線がスタートライン。枠番と違うコースに入った艇は枠をオレンジで強調し、見出しに「進入変化」と表示。Fはフライング。直前情報ありの予想は、コース別成績・イン1着率・内側の艇とのST差・展示タイムのコース補正をすべてこの進入コースで計算している（本番で進入が変わる場合もある）。</dd>
         <dt>イン1着率</dt><dd>このレース場で過去1年に1コースの艇が1着になった割合。</dd>
         <dt>出走表のみ / 直前情報あり</dt><dd>予想に展示タイム・進入コースなどの直前情報を使ったかどうか。当日のレースを表示している間は、直前情報とオッズを1分ごとに自動で公式サイトから取得し、展示後は直前情報ありの予想に切り替わる（締切後は締切時オッズを取得して終了）。「↻ 更新」で今すぐ取得することもできる。</dd>
         <dt>3連単 確率上位20点</dt><dd>1着確率から計算した3連単の各組み合わせの出現確率の上位20点と、そのオッズ・期待値（出現確率 × オッズを%で表示。100%を超えると払戻の期待が掛け金を上回る）。</dd>
       </dl>
     </details>
-    <div class="tri-box"><h3>3連単 確率上位20点 <small class="odds-note muted"></small></h3><ol class="tri"></ol></div>
+    <div class="tri-box"><h3>3連単 確率上位20点 <small class="odds-note muted"></small></h3><ol class="tri"></ol>
+      <details class="legend">
+        <summary>3連単の項目の説明</summary>
+        <dl>
+          <dt>順</dt><dd>出現確率の高い順の順位。</dd>
+          <dt>組番</dt><dd>1着-2着-3着の艇番（3連単の買い目）。</dd>
+          <dt>確率</dt><dd>その組番どおりに決まる確率（出現確率）。各艇の1着確率から、1着の艇を除いた残りで2着、さらに残りで3着が決まると考えて計算（ハーヴィル方式）。120通りすべての合計が100%。</dd>
+          <dt>オッズ</dt><dd>公式サイトの3連単オッズ（倍）。締切前は取得時点の値で、締切までに変動する。締切後は締切時オッズ。</dd>
+          <dt>期待値</dt><dd>確率 × オッズ を%で表示。100円買ったときに平均して戻ってくる金額の目安（例: 120% なら平均120円）。100%を超えるものは緑で表示。ただし確率はモデルの推定値なので、特に大穴では高く出やすい点に注意。</dd>
+          <dt>緑の行</dt><dd>レース結果で的中した組番。</dd>
+        </dl>
+      </details>
+    </div>
     <div class="picks">
       <div class="result"></div>
     </div>
   </article>
 </template>
 
-<script src="app.js?v=18"></script>
+<script src="app.js?v=19"></script>
 </body>
 </html>

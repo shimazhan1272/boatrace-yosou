@@ -203,6 +203,30 @@ function tab(html, pressed, onclick) {
   return b;
 }
 
+// ".02" / "F.03" 形式の ST 表示
+const fmtST = (st) => (st == null ? "-" : (st < 0 ? "F" : "") + "." + String(Math.round(Math.abs(st) * 100)).padStart(2, "0"));
+
+// スタート展示: 上から1〜6コースの順に、入った艇・ST の早さ（位置）・ST
+function renderStart(box, r) {
+  const rows = $(".st-rows", box);
+  const entered = r.boats.filter((b) => b.course != null).sort((a, b) => a.course - b.course);
+  if (!entered.length) {
+    rows.innerHTML = `<p class="muted st-none">展示前（展示後に自動で表示されます）</p>`;
+    return;
+  }
+  rows.innerHTML = entered.map((b) => {
+    const st = b.ex_st;
+    // ST 0.00 でスタートライン（右端）、0.50 で左端寄り
+    const back = st == null ? 50 : Math.min(Math.max(st, 0), 0.5) / 0.5 * 78;
+    const moved = b.course !== b.boat;
+    return `<div class="st-row">
+      <span class="lane l${b.boat} ${moved ? "moved-lane" : ""}" title="${moved ? `${b.boat}号艇が${b.course}コースから進入` : `${b.course}コース`}">${b.boat}</span>
+      <div class="st-track"><span class="st-boat l${b.boat}" style="right:${back}%"></span></div>
+      <span class="st-time ${st != null && st < 0 ? "flying" : ""}">${fmtST(st)}</span>
+    </div>`;
+  }).join("");
+}
+
 function renderRace(r) {
   const box = $("#races");
   box.innerHTML = "";
@@ -223,21 +247,20 @@ function renderRace(r) {
       r.closed_at ? "締切 " + r.closed_at.slice(11, 16) : "",
     ].filter(Boolean).join("　");
 
-    const maxWin = Math.max(...r.boats.map((b) => b.win));
     $("tbody", el).innerHTML = r.boats.map((b) => `
       <tr>
         <td><span class="lane l${b.boat}">${b.boat}</span></td>
-        <td class="num">${b.course == null ? "-" : b.course === b.boat
-          ? b.course : `<span class="moved" title="${b.boat}号艇が${b.course}コースから進入">${b.course}</span>`}</td>
         <td class="name">${b.name}<span class="cls">${b.class}</span></td>
         <td class="num hide-sm">${b.nat_win?.toFixed(2) ?? "-"}</td>
         <td class="num hide-sm">${b.meet_place != null ? `${b.meet_place.toFixed(2)}<small class="muted">(${b.meet_races})</small>` : "-"}</td>
         <td class="num hide-sm">${b.st_exp != null ? "." + Math.round(b.st_exp * 100).toString().padStart(2, "0") : "-"}</td>
         <td class="num hide-sm">${b.ex_time != null ? `${b.ex_time.toFixed(2)}<small class="${b.ex_adj < 0 ? "good" : "muted"}">(${b.ex_adj > 0 ? "+" : ""}${b.ex_adj.toFixed(2)})</small>` : "-"}</td>
-        <td><div class="bar"><i style="width:${(b.win / maxWin) * 80}px"></i><small>${pct(b.win)}</small></div></td>
+        <td class="num win">${pct(b.win)}</td>
         <td class="num">${pct(b.top2)}</td>
         <td class="num">${pct(b.top3)}</td>
       </tr>`).join("");
+
+    renderStart($(".start-ex", el), r);
 
     const res = r.result;
     const hitCombos = new Set(res?.trifecta ?? []);

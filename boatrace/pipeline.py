@@ -218,6 +218,7 @@ def _race_prediction(g: pd.DataFrame, kind: str) -> dict:
             "ex_time": _num(b["ex_time"]),
             "ex_adj": _num(b["ex_adj_c"]),
             "course": _num(b["course"]),
+            "ex_st": _num(b["ex_st"]),  # 展示ST（負の値はフライング）
             "meet_place": _num(b["meet_place"]),
             "meet_races": _num(b["meet_races"]),
             "st_exp": _num(b["st_exp_c"] if kind == "full" else b["st_exp_b"]),
@@ -395,7 +396,9 @@ def predict_day(d: date, final_odds_limit: int | None = FINAL_ODDS_PER_RUN) -> d
         old = previous.get(rid)
         if old and race["closed_at"] and race["closed_at"] <= now:
             # 締切後は予測を凍結し、後出しにならないようにする
-            race = {k: v for k, v in old.items() if k != "result"}
+            fresh, race = race, {k: v for k, v in old.items() if k != "result"}
+            for fb, ob in zip(fresh["boats"], race["boats"]):
+                ob.setdefault("ex_st", fb["ex_st"])  # 項目追加前に凍結したレース用
         else:
             _attach_ev(race, d, now_dt)
             if "ev" not in race and old and "ev" in old:
