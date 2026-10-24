@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>ボートレースAI予想</title>
 <meta name="description" content="Boatrace Open API のデータを使った機械学習によるボートレース予想">
-<link rel="stylesheet" href="style.css?v=5">
+<link rel="stylesheet" href="style.css?v=6">
 </head>
 <body>
 <header>
@@ -21,6 +21,11 @@
 
 <main class="wrap">
   <p id="day-note" class="day-note" hidden></p>
+  <div id="status" class="status" hidden>
+    <span id="updated" class="muted"></span>
+    <span id="update-msg" class="muted"></span>
+    <button id="refresh" type="button">↻ 更新</button>
+  </div>
   <div class="picker">
     <div class="picker-row"><span class="picker-label">レース場</span><nav id="stadiums" class="tabs" aria-label="レース場"></nav></div>
     <div class="picker-row"><span class="picker-label">レース</span><nav id="race-tabs" class="tabs races-tabs" aria-label="レース"></nav></div>
@@ -53,6 +58,6 @@
   </article>
 </template>
 
-<script src="app.js?v=5"></script>
+<script src="app.js?v=6"></script>
 </body>
 </html>

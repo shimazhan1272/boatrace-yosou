@@ -32,7 +32,11 @@ select { font: inherit; padding: 6px 10px; border-radius: 8px; border: 1px solid
 .day-note { margin: 0 0 10px; padding: 8px 12px; border-radius: 10px; font-size: 13px; background: color-mix(in srgb, var(--accent) 12%, var(--card)); border: 1px solid color-mix(in srgb, var(--accent) 40%, var(--line)); }
 .day-note b { color: var(--accent); margin-right: 6px; }
 
-.picker {background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px 2px; margin-bottom: 12px; }
+.status { display: flex; align-items: center; gap: 10px; justify-content: flex-end; margin: 0 0 8px; font-size: 12px; }
+.status button { font: inherit; font-size: 13px; padding: 6px 14px; border-radius: 8px; border: 1px solid var(--accent); background: var(--accent); color: #fff; cursor: pointer; }
+.status button:disabled { opacity: .6; cursor: default; }
+
+.picker { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px 2px; margin-bottom: 12px; }
 .picker-row { display: flex; align-items: flex-start; gap: 10px; }
 .picker-label { flex: none; width: 4.5em; font-size: 12px; color: var(--muted); padding-top: 8px; }
 .picker .tabs { flex: 1; min-width: 0; margin-bottom: 0; flex-wrap: wrap; overflow: visible; }

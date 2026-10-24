@@ -3,9 +3,9 @@ name: update predictions
 
 on:
   schedule:
-    # 08:00〜21:40 JST に20分おき（cron は UTC）
-    - cron: "*/20 23 * * *"
-    - cron: "*/20 0-12 * * *"
+    # 08:00〜21:50 JST に10分おき（cron は UTC）。GitHub の都合で数分〜十数分遅れることがある
+    - cron: "*/10 23 * * *"
+    - cron: "*/10 0-12 * * *"
   workflow_dispatch:
 
 permissions:
@@ -33,9 +33,12 @@ jobs:
       - run: pip install -r requirements.txt
 
       # 場×コース等の集計に過去1年分の結果を使うので、APIキャッシュを使い回す
+      # （公式サイトから取った直前情報も、同じレースを取り直さないよう保存しておく）
       - uses: actions/cache@v4
         with:
-          path: data/raw
+          path: |
+            data/raw
+            data/beforeinfo
           key: raw-${{ github.run_id }}
           restore-keys: raw-
 
@@ -48,6 +51,7 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add docs/data
           git diff --cached --quiet || git commit -m "update predictions $(TZ=Asia/Tokyo date '+%F %H:%M')"
+          git pull --rebase
           git push
 
       - uses: actions/configure-pages@v5

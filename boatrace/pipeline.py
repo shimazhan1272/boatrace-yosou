@@ -5,8 +5,8 @@ from datetime import date, datetime, timedelta
 import numpy as np
 import pandas as pd
 
-from . import model, odds, strategy
-from .config import JST, MODEL_DIR, RACER_CLASSES, SITE_DATA_DIR, STADIUMS, today_jst
+from . import beforeinfo, model, odds, strategy
+from .config import DATA_DIR, JST, MODEL_DIR, RACER_CLASSES, SITE_DATA_DIR, STADIUMS, today_jst
 from .features import HISTORY_DAYS, add_features, build_frame, has_preview, history_frame
 from .fetch import fetch_day, load_range
 
@@ -296,6 +296,44 @@ def _attach_ev(race: dict, d: date, now: datetime):
     }
 
 
+BEFOREINFO_WINDOW_MIN = 45  # 締切この分数前から公式サイトの直前情報を見に行く
+BEFOREINFO_DIR = DATA_DIR / "beforeinfo"
+
+
+def _merge_official_previews(d: date, programs, previews, now: datetime):
+    """Open API に展示タイムがまだ無いレースは、締切が近ければ公式サイトから直前情報を取る。
+
+    取れた直前情報は data/beforeinfo に保存し、次回以降の実行では再取得しない。
+    """
+    by_key = {(r["race_stadium_number"], r["race_number"]): r for r in previews}
+    fetched = 0
+    for p in programs:
+        key = (p["race_stadium_number"], p["race_number"])
+        api = by_key.get(key)
+        if api and all((b.get("racer_exhibition_time") or 0) > 0 for b in api["boats"]):
+            continue
+        path = BEFOREINFO_DIR / f"{d:%Y%m%d}" / f"{key[0]:02d}_{key[1]:02d}.json"
+        if path.exists():
+            by_key[key] = json.loads(path.read_text(encoding="utf-8"))
+            continue
+        closed = datetime.strptime(p["race_closed_at"], "%Y-%m-%d %H:%M:%S").replace(tzinfo=JST)
+        if not now < closed <= now + timedelta(minutes=BEFOREINFO_WINDOW_MIN):
+            continue
+        try:
+            data = beforeinfo.fetch_beforeinfo(d, *key)
+        except Exception as e:  # 取れなければ出走表のみで予想する
+            print(f"  beforeinfo failed {key}: {e}")
+            continue
+        fetched += 1
+        if data:
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
+            by_key[key] = data
+    if fetched:
+        print(f"  official beforeinfo: checked {fetched} races")
+    return list(by_key.values())
+
+
 def predict_day(d: date) -> dict:
     from .features import race_id
 
@@ -304,6 +342,8 @@ def predict_day(d: date) -> dict:
     results = fetch_day("results", d, force=True)
     if not programs:
         return {"date": str(d), "races": []}
+    if d == today_jst():
+        previews = _merge_official_previews(d, programs, previews, datetime.now(JST))
 
     past = load_range(d - timedelta(days=HISTORY_DAYS), d - timedelta(days=1))
     df = build_frame(programs, previews)

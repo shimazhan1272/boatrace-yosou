@@ -22,6 +22,7 @@ async function init() {
   input.addEventListener("change", () => input.value && select({ date: input.value, stadium: state.stadium, race: null }));
   $("#prev-day").onclick = () => stepDay(-1);
   $("#next-day").onclick = () => stepDay(1);
+  $("#refresh").onclick = refresh;
   window.addEventListener("hashchange", () => select(parseHash()));
   const m = index.models.full || index.models.base;
   if (m) {
@@ -30,6 +31,25 @@ async function init() {
   }
   if (index.days.length) await select(parseHash());
   else $("#empty").hidden = false;
+}
+
+// 更新ボタン: 最新の予想データ（定期実行で取得した直前情報を含む）を読み直す
+async function refresh() {
+  const btn = $("#refresh");
+  const before = day?.updated_at;
+  btn.disabled = true;
+  btn.textContent = "更新中…";
+  try {
+    index = await getJSON("data/index.json", Date.now());
+    day = null;
+    await select({ ...state });
+    $("#update-msg").textContent = day && day.updated_at !== before ? "最新データを反映しました" : "新しいデータはまだありません";
+  } catch (e) {
+    $("#update-msg").textContent = "更新に失敗しました";
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "↻ 更新";
+  }
 }
 
 // データのある前後の日へ移動する
@@ -67,6 +87,8 @@ async function select({ date, stadium, race }) {
   note.hidden = !day.backtest;
   note.innerHTML = day.backtest ? `<b>検証データ</b> ${day.note ?? ""}` : "";
   updateDayButtons();
+  $("#status").hidden = false;
+  $("#updated").textContent = day.backtest ? "" : `最終更新 ${day.updated_at.slice(11, 16)}`;
 
   const stadiums = [...new Map(day.races.map((r) => [r.stadium, r.stadium_name])).entries()];
   state.stadium = stadiums.some(([n]) => n === stadium) ? stadium : stadiums[0]?.[0];
