@@ -2,6 +2,8 @@ const $ = (s, el = document) => el.querySelector(s);
 const pct = (v) => (v == null ? "-" : (v * 100).toFixed(1) + "%");
 const yen = (v) => v.toLocaleString("ja-JP") + "円";
 const BET_TYPES = { trifecta: "3連単", exacta: "2連単" };
+// "1-2-3" → 艇番カラーの丸数字を「-」でつないだ表示
+const combo = (c) => `<span class="combo">${c.split("-").map((n) => `<span class="ball l${n}">${n}</span>`).join('<span class="sep">-</span>')}</span>`;
 const ODDS_WINDOW = 25;
 // 更新ボタンで直前情報をその場で取得する API（Render）
 const API_BASE = new URLSearchParams(location.search).get("api") || "https://boatrace-yosou-api.onrender.com";
@@ -197,7 +199,7 @@ function renderRace(r) {
     const res = r.result;
     const hitCombos = new Set(res?.trifecta ?? []);
     $(".tri", el).innerHTML = r.trifecta.slice(0, 20)
-      .map(([c, p], i) => `<li class="${hitCombos.has(c) ? "hit" : ""}"><span class="rank">${i + 1}</span><b>${c}</b><small>${pct(p)}</small></li>`).join("");
+      .map(([c, p], i) => `<li class="${hitCombos.has(c) ? "hit" : ""}"><span class="rank">${i + 1}</span>${combo(c)}<small>${pct(p)}</small></li>`).join("");
 
     const ev = r.ev;
     const evList = $(".ev-list", el);
@@ -210,7 +212,7 @@ function renderRace(r) {
       const hitSet = new Set([...(res?.trifecta ?? []), res && res.order.slice(0, 2).join("-")]);
       evList.innerHTML = ev.picks.map((p) => `
         <li class="${hitSet.has(p.combo) ? "hit" : ""}">
-          <span class="bt">${BET_TYPES[p.type]}</span> <b>${p.combo}</b>
+          <span class="bt">${BET_TYPES[p.type]}</span> ${combo(p.combo)}
           <small class="muted">${p.odds.toFixed(1)}倍 × ${pct(p.prob)} = 期待値 ${p.ev.toFixed(2)}</small>
         </li>`).join("") + `<li class="muted asof">オッズ ${ev.odds_at.slice(11, 16)} 時点</li>`;
     }
