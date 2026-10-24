@@ -6,7 +6,8 @@
   python -m boatrace backtest-ev 2026-10-17 2026-10-23  # 期待値買い目の検証
   python -m boatrace backfill 2026-08-25 2026-10-23     # 過去日の予想をサイト用に作成（検証データ）
   python -m boatrace predict [2026-10-24]          # 指定日の予測JSONを出力
-  python -m boatrace update                        # 定期実行用（前日結果 + 当日予測）
+  python -m boatrace update                        # 定期実行用（10分おき: 当日予測・直前情報・オッズ）
+  python -m boatrace daily                         # 定期実行用（毎朝: 前日の過去データ取り込みと結果確定）
 """
 import argparse
 from datetime import date
@@ -27,6 +28,7 @@ def main():
     p = sub.add_parser("predict")
     p.add_argument("date", type=date.fromisoformat, nargs="?")
     sub.add_parser("update")
+    sub.add_parser("daily")
     sub.add_parser("reattach-odds")
     args = ap.parse_args()
 
@@ -47,6 +49,8 @@ def main():
         print(f"{data['date']}: {len(data['races'])} races")
     elif args.cmd == "reattach-odds":
         pipeline.reattach_backfill_odds()
+    elif args.cmd == "daily":
+        pipeline.daily()
     elif args.cmd == "update":
         pipeline.update()
 

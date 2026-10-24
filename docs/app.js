@@ -4,7 +4,7 @@ const yen = (v) => v.toLocaleString("ja-JP") + "円";
 // "1-2-3" → 艇番カラーの丸数字を「-」でつないだ表示
 const combo = (c) => `<span class="combo">${c.split("-").map((n) => `<span class="ball l${n}">${n}</span>`).join('<span class="sep">-</span>')}</span>`;
 const ODDS_WINDOW = 25;
-// 更新ボタンで直前情報をその場で取得する API（Render）
+// 直前情報・オッズをその場で取得する API（Render）。当日のレースは自動で、更新ボタンでも呼ぶ
 const API_BASE = new URLSearchParams(location.search).get("api") || "https://boatrace-yosou-api.onrender.com";
 const todayJST = () => new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 10);
 
@@ -28,6 +28,10 @@ async function init() {
   $("#next-day").onclick = () => stepDay(1);
   $("#refresh").onclick = refresh;
   window.addEventListener("hashchange", () => select(parseHash()));
+  // タブに戻ってきたら、待たずに最新を取りに行く
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible" && needsLive(currentRace())) fetchLive(true);
+  });
   const m = index.models.full || index.models.base;
   if (m) {
     $("#model-info").textContent =
@@ -39,36 +43,66 @@ async function init() {
   else $("#empty").hidden = false;
 }
 
-// 更新ボタン: 当日のレースは API で直前情報・オッズを取り直して予想し直す。
-// それ以外（過去日・API が使えない時）は公開データを読み直す。
+const LIVE_INTERVAL = 60 * 1000;  // 自動取得の間隔（API 側でオッズは60秒キャッシュ）
+let liveTimer = null;
+let liveBusy = false;
+
+const nowJST = () => new Date(Date.now() + 9 * 3600e3).toISOString().replace("T", " ").slice(0, 19);
+const currentRace = () => day?.races.find((r) => r.stadium === state.stadium && r.race_number === state.race);
+
+// 当日のレースで、まだ締切前か、締切後でも締切時オッズが無いものは API から自動で取り直す
+function needsLive(r) {
+  if (!API_BASE || !r || state.date !== todayJST()) return false;
+  return r.closed_at > nowJST() || r.odds?.at !== "締切時";
+}
+
+// API で直前情報・オッズを取り直して予想し直す。silent は自動取得（ボタン表示を変えない）
+async function fetchLive(silent) {
+  if (liveBusy) return;
+  liveBusy = true;
+  const msg = $("#update-msg");
+  const key = { stadium: state.stadium, race: state.race };
+  const slow = setTimeout(() => (msg.textContent = "サーバー起動中（最大1分ほどかかります）…"), 4000);
+  try {
+    if (!silent) msg.textContent = "取得中…";
+    const res = await fetch(`${API_BASE}/api/race?date=${state.date}&stadium=${key.stadium}&race=${key.race}`);
+    const body = await res.json();
+    if (!res.ok) throw new Error(body.detail || res.status);
+    const i = day.races.findIndex((r) => r.stadium === key.stadium && r.race_number === key.race);
+    if (i >= 0) body.result = day.races[i].result;  // 結果は公開データ側のものを使う
+    if (i >= 0) day.races[i] = body; else day.races.push(body);
+    // 取得中に別のレースへ移っていたら、画面はそのまま（データだけ更新）
+    if (state.stadium === key.stadium && state.race === key.race) await select({ ...state }, false);
+    const what = body.live.exhibition ? "直前情報" : "出走表のみ（展示前）";
+    const odds = body.odds ? (body.odds.at === "締切時" ? "締切時オッズ" : "オッズ " + body.odds.at.slice(11, 16)) : "オッズ未発表";
+    msg.textContent = `${silent ? "自動取得" : "取得"}: ${what}・${odds}`;
+  } catch (e) {
+    msg.textContent = (silent ? "自動取得に失敗: " : "更新に失敗: ") + e.message;
+  } finally {
+    clearTimeout(slow);
+    liveBusy = false;
+  }
+}
+
+// 表示中のレースの自動取得を（再）開始する
+function scheduleLive() {
+  clearInterval(liveTimer);
+  if (!needsLive(currentRace())) return;
+  fetchLive(true);
+  liveTimer = setInterval(() => {
+    if (!needsLive(currentRace())) return clearInterval(liveTimer);
+    if (document.visibilityState === "visible") fetchLive(true);
+  }, LIVE_INTERVAL);
+}
+
+// 更新ボタン: 当日のレースは API で取り直し、それ以外は公開データを読み直す
 async function refresh() {
   const btn = $("#refresh");
   const msg = $("#update-msg");
   btn.disabled = true;
   btn.textContent = "更新中…";
   try {
-    if (API_BASE && state.date === todayJST() && state.race) {
-      const slow = setTimeout(() => (msg.textContent = "サーバー起動中（最大1分ほどかかります）…"), 4000);
-      try {
-        const res = await fetch(`${API_BASE}/api/race?date=${state.date}&stadium=${state.stadium}&race=${state.race}`);
-        const body = await res.json();
-        if (!res.ok) throw new Error(body.detail || res.status);
-        const i = day.races.findIndex((r) => r.stadium === state.stadium && r.race_number === state.race);
-        if (i >= 0) {
-          body.result = day.races[i].result;  // 結果は公開データ側のものを使う
-        }
-        if (i >= 0) day.races[i] = body; else day.races.push(body);
-        await select({ ...state });
-        const t = body.live.fetched_at.slice(11, 16);
-        const what = body.live.exhibition ? "直前情報" : "出走表のみ（展示前）";
-        msg.textContent = body.odds
-          ? `${what}・${body.odds.at === "締切時" ? "締切時オッズ" : "オッズ " + body.odds.at.slice(11, 16)} 取得`
-          : `${what} ${t} 取得（オッズ未発表）`;
-        return;
-      } finally {
-        clearTimeout(slow);
-      }
-    }
+    if (API_BASE && state.date === todayJST() && state.race) return await fetchLive(false);
     const before = day?.updated_at;
     index = await getJSON("data/index.json", Date.now());
     day = null;
@@ -96,7 +130,7 @@ function parseHash() {
   return { date, stadium: Number(stadium) || null, race: Number(race) || null };
 }
 
-async function select({ date, stadium, race }) {
+async function select({ date, stadium, race }, live = true) {
   const entry = date ? index.days.find((d) => d.date === date) : index.days[0];
   $("#date").value = date || index.days[0].date;
   if (!entry) {
@@ -108,6 +142,7 @@ async function select({ date, stadium, race }) {
     $("#empty").hidden = false;
     $("#empty").textContent = `${date} の予想はありません（表示できる期間: ${dates[0]} 〜 ${dates[dates.length - 1]}）。`;
     updateDayButtons();
+    clearInterval(liveTimer);
     return;
   }
   if (!day || day.date !== entry.date) day = await getJSON("data/" + entry.file, index.updated_at);
@@ -129,6 +164,7 @@ async function select({ date, stadium, race }) {
   if (location.hash !== hash) history.replaceState(null, "", hash);
   renderTabs(stadiums, races);
   renderRace(races.find((r) => r.race_number === state.race));
+  if (live) scheduleLive();
 }
 
 // 未指定なら次に締切を迎えるレース、全て終わっていれば1R

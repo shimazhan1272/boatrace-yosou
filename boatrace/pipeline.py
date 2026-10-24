@@ -293,12 +293,12 @@ def _attach_ev(race: dict, d: date, now: datetime):
 FINAL_ODDS_PER_RUN = 15  # 1回の定期実行で締切時オッズを取りに行く最大レース数
 
 
-def _attach_final_odds(races: list[dict], d: date, now: str):
+def _attach_final_odds(races: list[dict], d: date, now: str, limit: int | None = FINAL_ODDS_PER_RUN):
     """締切を過ぎたレースに締切時オッズを付ける（表示用。期待値推奨は締切前のものを残す）。"""
     pending = [r for r in races
                if r["closed_at"] and r["closed_at"] <= now and not r.get("final_odds_checked")]
     pending.sort(key=lambda r: r["closed_at"], reverse=True)  # 締切直後のレースを優先
-    for race in pending[:FINAL_ODDS_PER_RUN]:
+    for race in pending[:limit]:
         try:
             book = odds.fetch_odds(d, race["stadium"], race["race_number"], final=True, exacta=False)
         except Exception as e:
@@ -347,7 +347,7 @@ def _merge_official_previews(d: date, programs, previews, now: datetime):
     return list(by_key.values())
 
 
-def predict_day(d: date) -> dict:
+def predict_day(d: date, final_odds_limit: int | None = FINAL_ODDS_PER_RUN) -> dict:
     from .features import race_id
 
     programs = fetch_day("programs", d, force=True)
@@ -374,7 +374,14 @@ def predict_day(d: date) -> dict:
     if out_path.exists():
         old_data = json.loads(out_path.read_text(encoding="utf-8"))
         if old_data.get("backtest"):
-            return old_data  # 検証データの日は上書きしない
+            # 検証データの日は予想を変えず、後から出た結果だけ付け直す
+            pays = payouts_by_race(results)
+            for race in old_data["races"]:
+                race.pop("result", None)
+                _score(race, next((r for r in results if race_id(r) == race["race_id"]), None),
+                       pays.get(race["race_id"]))
+            out_path.write_text(json.dumps(old_data, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
+            return old_data
         previous = {r["race_id"]: r for r in old_data["races"]}
 
     now_dt = datetime.now(JST)
@@ -397,7 +404,7 @@ def predict_day(d: date) -> dict:
         _score(race, res_by_id.get(rid), pays.get(rid))
         races.append(race)
     races.sort(key=lambda r: (r["stadium"], r["race_number"]))
-    _attach_final_odds(races, d, now)
+    _attach_final_odds(races, d, now, final_odds_limit)
 
     data = {"date": str(d), "updated_at": now, "races": races}
     out_path.parent.mkdir(parents=True, exist_ok=True)
@@ -502,6 +509,27 @@ def build_index():
     index = {"updated_at": datetime.now(JST).strftime("%Y-%m-%d %H:%M:%S"),
              "tri_bets": TRI_BETS, "days": days, "models": meta}
     (SITE_DATA_DIR / "index.json").write_text(json.dumps(index, ensure_ascii=False, indent=1), encoding="utf-8")
+
+
+def daily(d: date | None = None):
+    """毎朝の定期実行: 前日分の過去データを取り込み、前日の予想に結果と締切時オッズを確定させる。
+
+    Open API は約3時間おきに同期されるので、朝には前日分の結果・直前情報が揃っている。
+    取り込んだデータは data/raw（Actions のキャッシュ）に残り、特徴量の計算や再学習に使われる。
+    """
+    from .context import publish_context
+
+    today = d or today_jst()
+    yesterday = today - timedelta(days=1)
+    for endpoint in ("programs", "previews", "results"):
+        n = len(fetch_day(endpoint, yesterday, force=True))
+        print(f"{yesterday} {endpoint}: {n} races")
+    if (SITE_DATA_DIR / "predictions" / f"{yesterday:%Y%m%d}.json").exists():
+        data = predict_day(yesterday, final_odds_limit=None)
+        scored = sum("result" in r for r in data["races"])
+        print(f"{yesterday}: results for {scored}/{len(data['races'])} races")
+    build_index()
+    publish_context(today)
 
 
 def update(d: date | None = None):
