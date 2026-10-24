@@ -55,14 +55,17 @@ async function refresh() {
         const body = await res.json();
         if (!res.ok) throw new Error(body.detail || res.status);
         const i = day.races.findIndex((r) => r.stadium === state.stadium && r.race_number === state.race);
-        if (i >= 0) body.result = day.races[i].result;  // 結果は公開データ側のものを使う
+        if (i >= 0) {
+          body.result = day.races[i].result;  // 結果は公開データ側のものを使う
+          if (!body.ev && day.races[i].ev) body.ev = day.races[i].ev;  // 締切後は締切前の期待値推奨を残す
+        }
         if (i >= 0) day.races[i] = body; else day.races.push(body);
         await select({ ...state });
         const t = body.live.fetched_at.slice(11, 16);
         const what = body.live.exhibition ? "直前情報" : "出走表のみ（展示前）";
         msg.textContent = body.odds
-          ? `${what}・オッズ ${body.odds.at.slice(11, 16)} 取得`
-          : `${what} ${t} 取得（締切後のためオッズは更新なし）`;
+          ? `${what}・${body.odds.at === "締切時" ? "締切時オッズ" : "オッズ " + body.odds.at.slice(11, 16)} 取得`
+          : `${what} ${t} 取得（オッズ未発表）`;
         return;
       } finally {
         clearTimeout(slow);
@@ -214,7 +217,9 @@ function renderRace(r) {
     // PC は 1〜10位 / 11〜20位 の2列（各列に見出し）、スマホは1列
     $(".tri", el).innerHTML = head + rows.slice(0, 10).join("") + head.replace("tri-head", "tri-head second") + rows.slice(10).join("");
     $(".odds-note", el).textContent = r.odds
-      ? `オッズ: ${r.odds.at === "確定" ? "確定オッズ" : r.odds.at.slice(11, 16) + " 時点"}（最新は公式サイトで確認してください）`
+      ? (r.odds.at === "確定" || r.odds.at === "締切時"
+        ? "オッズ: 締切時オッズ"
+        : `オッズ: ${r.odds.at.slice(11, 16)} 時点（最新は公式サイトで確認してください）`)
       : (r.result ? "オッズ未取得" : `オッズは締切${ODDS_WINDOW}分前から自動取得。↻ 更新でいつでも取得できます`);
 
     const ev = r.ev;

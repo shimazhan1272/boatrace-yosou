@@ -59,13 +59,18 @@ def picks(win_probs: dict[int, float], odds: dict, cfg: EVConfig = DEFAULT) -> l
     ]
 
 
-def attach(race: dict, book: dict, odds_at: str, cfg: EVConfig = DEFAULT):
-    """予想 dict に、表示中の3連単上位のオッズ・期待値と、期待値推奨の買い目を付ける。"""
+def attach_odds(race: dict, book: dict, odds_at: str):
+    """予想 dict に、表示中の3連単上位のオッズを付ける（期待値は画面で 確率 × オッズ を計算）。"""
     tri = book.get("trifecta") or {}
     race["odds"] = {
         "at": odds_at,
         "trifecta": {c: tri[c] for c, _ in race["trifecta"] if c in tri},
     }
+
+
+def attach(race: dict, book: dict, odds_at: str, cfg: EVConfig = DEFAULT):
+    """オッズに加えて、期待値推奨の買い目を付ける（締切前のオッズで使う）。"""
+    attach_odds(race, book, odds_at)
     probs = {b["boat"]: b["win"] for b in race["boats"]}
     race["ev"] = {"odds_at": odds_at, "config": cfg.to_dict(), "picks": picks(probs, book, cfg)}
 

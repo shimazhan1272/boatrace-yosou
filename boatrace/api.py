@@ -77,12 +77,14 @@ def _beforeinfo(d, stadium, race):
     return data
 
 
-def _live_odds(d, stadium, race):
+def _live_odds(d, stadium, race, final=False):
+    """締切前は60秒キャッシュ、締切後（締切時オッズ）は取れたら以降は取り直さない。"""
     key = (d, stadium, race)
     hit = _odds.get(key)
-    if hit and time.time() - hit[0] < ODDS_TTL:
+    if hit and (hit[1].get("final") and hit[1]["trifecta"]
+                or not final and time.time() - hit[0] < ODDS_TTL):
         return hit[1]
-    data = odds.fetch_odds(d, stadium, race, final=False)
+    data = odds.fetch_odds(d, stadium, race, final=final)
     _odds[key] = (time.time(), data)
     return data
 
@@ -115,12 +117,17 @@ def race(date_: date = Query(alias="date"), stadium: int = Query(ge=1, le=24), r
 
         now = datetime.now(JST)
         closed = datetime.strptime(program["race_closed_at"], "%Y-%m-%d %H:%M:%S").replace(tzinfo=JST)
-        if now < closed:
-            try:
+        try:
+            if now < closed:
                 book = _live_odds(date_, stadium, race)
                 if book["trifecta"]:
                     strategy.attach(result, book, book["fetched_at"])
-            except Exception:
-                pass  # オッズが取れなくても予想は返す
+            else:
+                # 締切後は締切時オッズを表示用に付ける（期待値推奨は締切前のものを画面側で残す）
+                book = _live_odds(date_, stadium, race, final=True)
+                if book["trifecta"]:
+                    strategy.attach_odds(result, book, "締切時")
+        except Exception:
+            pass  # オッズが取れなくても予想は返す
         result["live"] = {"fetched_at": now.strftime("%Y-%m-%d %H:%M:%S"), "exhibition": preview is not None}
         return result

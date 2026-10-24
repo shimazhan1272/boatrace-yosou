@@ -290,6 +290,25 @@ def _attach_ev(race: dict, d: date, now: datetime):
     strategy.attach(race, book, book["fetched_at"])
 
 
+FINAL_ODDS_PER_RUN = 15  # 1回の定期実行で締切時オッズを取りに行く最大レース数
+
+
+def _attach_final_odds(races: list[dict], d: date, now: str):
+    """締切を過ぎたレースに締切時オッズを付ける（表示用。期待値推奨は締切前のものを残す）。"""
+    pending = [r for r in races
+               if r["closed_at"] and r["closed_at"] <= now and not r.get("final_odds_checked")]
+    pending.sort(key=lambda r: r["closed_at"], reverse=True)  # 締切直後のレースを優先
+    for race in pending[:FINAL_ODDS_PER_RUN]:
+        try:
+            book = odds.fetch_odds(d, race["stadium"], race["race_number"], final=True)
+        except Exception as e:
+            print(f"  final odds failed {race['race_id']}: {e}")
+            continue
+        race["final_odds_checked"] = True  # 中止レース等でオッズが無くても取り直さない
+        if book["trifecta"]:
+            strategy.attach_odds(race, book, "締切時")
+
+
 BEFOREINFO_WINDOW_MIN = 45  # 締切この分数前から公式サイトの直前情報を見に行く
 BEFOREINFO_DIR = DATA_DIR / "beforeinfo"
 
@@ -378,6 +397,7 @@ def predict_day(d: date) -> dict:
         _score(race, res_by_id.get(rid), pays.get(rid))
         races.append(race)
     races.sort(key=lambda r: (r["stadium"], r["race_number"]))
+    _attach_final_odds(races, d, now)
 
     data = {"date": str(d), "updated_at": now, "races": races}
     out_path.parent.mkdir(parents=True, exist_ok=True)
