@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>ボートレースAI予想</title>
 <meta name="description" content="Boatrace Open API のデータを使った機械学習によるボートレース予想">
-<link rel="stylesheet" href="style.css?v=4">
+<link rel="stylesheet" href="style.css?v=5">
 </head>
 <body>
 <header>
@@ -27,11 +27,6 @@
   </div>
   <section id="races"></section>
   <p id="empty" class="muted" hidden>この日の予想はありません。</p>
-  <h2 class="section-title">成績（実運用: 締切前に公開した予想）</h2>
-  <section id="summary" class="summary"></section>
-  <h2 class="section-title">検証（学習に使っていない過去日の事後予想）</h2>
-  <section id="summary-bt" class="summary"></section>
-  <p class="muted small-note">検証の期待値買いは、確定オッズを取得済みのレースだけで計算した参考値です。実運用は締切前のオッズで判断するため条件が不利になり、レース数も少ないので結果は大きく変わり得ます。</p>
 </main>
 
 <footer class="wrap muted">
@@ -50,14 +45,14 @@
       <thead><tr><th>枠</th><th>選手</th><th class="num hide-sm">勝率</th><th class="num hide-sm" title="今節の平均着順（走数）">今節</th><th class="num hide-sm" title="今節・直近・コース別から推定したスタートタイミング">予想ST</th><th class="num hide-sm" title="展示タイム（括弧内はコース補正後のレース内偏差、マイナスほど良い）">展示</th><th>1着確率</th><th class="num">3着内</th></tr></thead>
       <tbody></tbody>
     </table>
+    <div class="tri-box"><h3>3連単 確率上位20点</h3><ol class="tri"></ol></div>
     <div class="picks">
-      <div><h3>3連単 確率上位</h3><ol class="tri"></ol></div>
       <div class="ev"><h3>期待値 推奨</h3><ul class="ev-list"></ul></div>
       <div class="result"></div>
     </div>
   </article>
 </template>
 
-<script src="app.js?v=4"></script>
+<script src="app.js?v=5"></script>
 </body>
 </html>

@@ -66,7 +66,15 @@ select { font: inherit; padding: 6px 10px; border-radius: 8px; border: 1px solid
 .bar i { display: block; height: 8px; border-radius: 4px; background: var(--accent); }
 .bar small { width: 3.2em; text-align: right; }
 
-.picks { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 10px; }
+.tri-box { margin-top: 12px; }
+.tri-box h3 { font-size: 13px; margin: 0 0 6px; color: var(--muted); font-weight: 500; }
+.tri-box .tri { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; }
+.tri-box .tri li { display: flex; align-items: baseline; gap: 6px; padding: 4px 8px; border: 1px solid var(--line); border-radius: 6px; font-variant-numeric: tabular-nums; }
+.tri-box .tri .rank { font-size: 10px; color: var(--muted); min-width: 1.4em; }
+.tri-box .tri small { margin-left: auto; font-size: 11px; color: var(--muted); }
+.tri-box .tri li.hit { border-color: var(--hit); color: var(--hit); }
+.tri-box .tri li.hit small { color: var(--hit); }
+.picks { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 12px; }
 .ev-list { margin: 0; padding: 0; list-style: none; font-variant-numeric: tabular-nums; }
 .ev-list li { padding: 1px 0; }
 .ev-list li small { display: block; font-size: 11px; }
@@ -82,6 +90,7 @@ select { font: inherit; padding: 6px 10px; border-radius: 8px; border: 1px solid
 
 @media (max-width: 600px) {
   .picks { grid-template-columns: 1fr; }
+  .tri-box .tri { grid-template-columns: repeat(2, 1fr); }
   header > .head { flex-wrap: wrap; }
   .date-nav { width: 100%; }
   .date-nav input { flex: 1; }

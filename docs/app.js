@@ -28,7 +28,6 @@ async function init() {
     $("#model-info").textContent =
       `モデル学習: ${m.trained_at.slice(0, 10)}（期間 ${m.period[0]}〜${m.period[1]}）`;
   }
-  renderSummary();
   if (index.days.length) await select(parseHash());
   else $("#empty").hidden = false;
 }
@@ -39,29 +38,6 @@ function stepDay(dir) {
   const i = dates.indexOf(state.date);
   const next = dates[i + dir];
   if (next) select({ date: next, stadium: state.stadium, race: null });
-}
-
-function renderSummary() {
-  $("#summary").innerHTML = summaryStats(index.days.filter((d) => !d.backtest));
-  $("#summary-bt").innerHTML = summaryStats(index.days.filter((d) => d.backtest));
-}
-
-function summaryStats(days) {
-  const t = days.reduce(
-    (a, d) => ({
-      scored: a.scored + d.scored, honmei: a.honmei + d.honmei_hits, tri: a.tri + d.trifecta_hits, bet: a.bet + d.bet, ret: a.ret + d.return,
-      evRaces: a.evRaces + (d.ev_races ?? 0), evBet: a.evBet + (d.ev_bet ?? 0), evRet: a.evRet + (d.ev_return ?? 0),
-    }),
-    { scored: 0, honmei: 0, tri: 0, bet: 0, ret: 0, evRaces: 0, evBet: 0, evRet: 0 }
-  );
-  const stats = [
-    ["レース数", t.scored ? `${t.scored.toLocaleString()}<small>（${days.length}日）</small>` : "0"],
-    ["本命 1着率", t.scored ? pct(t.honmei / t.scored) : "-"],
-    [`3連単 ${index.tri_bets}点 的中率`, t.scored ? pct(t.tri / t.scored) : "-"],
-    [`3連単 ${index.tri_bets}点 回収率`, t.bet ? pct(t.ret / t.bet) : "-"],
-    ["期待値買い 回収率", t.evBet ? `${pct(t.evRet / t.evBet)}<small>（${t.evRaces}R）</small>` : "-"],
-  ];
-  return stats.map(([k, v]) => `<div class="stat"><b>${v}</b><span>${k}</span></div>`).join("");
 }
 
 // URL の #日付/場/R で選択状態を共有・ブックマークできるようにする
@@ -173,8 +149,8 @@ function renderRace(r) {
 
     const res = r.result;
     const hitCombos = new Set(res?.trifecta ?? []);
-    $(".tri", el).innerHTML = r.trifecta.slice(0, index.tri_bets)
-      .map(([c, p]) => `<li class="${hitCombos.has(c) ? "hit" : ""}">${c} <small class="muted">${pct(p)}</small></li>`).join("");
+    $(".tri", el).innerHTML = r.trifecta.slice(0, 20)
+      .map(([c, p], i) => `<li class="${hitCombos.has(c) ? "hit" : ""}"><span class="rank">${i + 1}</span><b>${c}</b><small>${pct(p)}</small></li>`).join("");
 
     const ev = r.ev;
     const evList = $(".ev-list", el);
