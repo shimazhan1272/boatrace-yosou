@@ -31,7 +31,10 @@ jobs:
       # 更新ボタン用 API（Render 無料枠）は15分使われないと停止するので、10分おきに起こしておく
       - name: wake API
         run: curl -s -m 10 -o /dev/null https://boatrace-yosou-api.onrender.com/health || true
+      # push で起動した場合も最新の main を使う（直前の定期実行のコミットを取り込むため）
       - uses: actions/checkout@v4
+        with:
+          ref: main
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
@@ -59,7 +62,7 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add docs/data
           git diff --cached --quiet || git commit -m "update predictions $(TZ=Asia/Tokyo date '+%F %H:%M')"
-          git pull --rebase
+          git pull --rebase -X theirs  # 競合したら今回生成したデータを優先
           git push
 
       - uses: actions/configure-pages@v5
