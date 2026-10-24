@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>ボートレースAI予想</title>
 <meta name="description" content="Boatrace Open API のデータを使った機械学習によるボートレース予想">
-<link rel="stylesheet" href="style.css?v=13">
+<link rel="stylesheet" href="style.css?v=16">
 </head>
 <body>
 <header>
@@ -46,10 +46,13 @@
       <div><strong class="race-no"></strong> <span class="race-title muted"></span></div>
       <div class="race-meta"><span class="badge model"></span> <span class="closed muted"></span></div>
     </header>
+    <div class="table-scroll">
     <table class="boats">
       <thead><tr><th>枠</th><th>選手</th><th class="num hide-sm">勝率</th><th class="num hide-sm" title="今節の平均着順（走数）">今節</th><th class="num hide-sm" title="今節・直近・コース別から推定したスタートタイミング">予想ST</th><th class="num hide-sm" title="展示タイム（括弧内はコース補正後のレース内偏差、マイナスほど良い）">展示</th><th>1着確率</th><th class="num">2着内</th><th class="num">3着内</th></tr></thead>
       <tbody></tbody>
     </table>
+    </div>
+    <p class="scroll-hint">← 表は横にスクロールできます →</p>
     <details class="legend">
       <summary>項目の説明</summary>
       <dl>
@@ -74,6 +77,6 @@
   </article>
 </template>
 
-<script src="app.js?v=13"></script>
+<script src="app.js?v=16"></script>
 </body>
 </html>

@@ -55,6 +55,9 @@ select { font: inherit; padding: 6px 10px; border-radius: 8px; border: 1px solid
 .badge { font-size: 11px; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--line); }
 .badge.full { border-color: var(--accent); color: var(--accent); }
 
+/* スマホでは表を横スクロール（枠・選手の列は左に固定） */
+.table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.scroll-hint { display: none; text-align: center; font-size: 11px; color: var(--muted); margin: 4px 0 0; }
 .boats { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
 .boats th { font-size: 12px; color: var(--muted); font-weight: 500; text-align: left; padding: 4px 6px; border-bottom: 1px solid var(--line); }
 .boats td { padding: 5px 6px; border-bottom: 1px solid var(--line); white-space: nowrap; }
@@ -119,8 +122,12 @@ select { font: inherit; padding: 6px 10px; border-radius: 8px; border: 1px solid
   .picker-label { padding-top: 0; }
   .picker .tabs { width: 100%; }
   .races-tabs { grid-template-columns: repeat(6, 1fr); }
-  .boats .hide-sm { display: none; }
+  .boats { min-width: 600px; border-collapse: separate; border-spacing: 0; }
   .boats .name { white-space: nowrap; }
-  .boats .cls { display: none; }
+  .boats th:nth-child(-n+2), .boats td:nth-child(-n+2) { position: sticky; z-index: 1; background: var(--card); }
+  .boats th:nth-child(1), .boats td:nth-child(1) { left: 0; }
+  .boats th:nth-child(1), .boats td:nth-child(1) { width: 42px; min-width: 42px; max-width: 42px; box-sizing: border-box; padding-left: 4px; padding-right: 4px; }
+  .boats th:nth-child(2), .boats td:nth-child(2) { left: 42px; box-shadow: 4px 0 4px -4px rgba(0, 0, 0, .35); }
+  .scroll-hint { display: block; }
   .bar { min-width: 80px; }
 }
