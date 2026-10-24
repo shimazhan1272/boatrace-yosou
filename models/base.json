@@ -1,0 +1,82 @@
+{
+  "trained_at": "2026-10-24T20:47:46+09:00",
+  "period": [
+    "2025-04-01",
+    "2026-10-23"
+  ],
+  "rounds": 753,
+  "valid": {
+    "races": 9228,
+    "logloss": 1.1862,
+    "win_top1_accuracy": 0.5713,
+    "baseline_boat1_accuracy": 0.5483,
+    "win_top1_roi": 0.9182,
+    "trifecta_hit_top1": 0.088,
+    "trifecta_hit_top5": 0.3157,
+    "trifecta_hit_top10": 0.4751,
+    "trifecta_top5_roi": 0.7637,
+    "best_iteration": 685
+  },
+  "top_features": [
+    [
+      "rc_win_b_diff",
+      1172793.3
+    ],
+    [
+      "rc_win_b_rank",
+      269741.8
+    ],
+    [
+      "nat_win_diff",
+      88907.9
+    ],
+    [
+      "stadium",
+      60559.3
+    ],
+    [
+      "meet_place_diff",
+      42671.9
+    ],
+    [
+      "sc_win_b",
+      40777.6
+    ],
+    [
+      "rc_top3_b",
+      37170.7
+    ],
+    [
+      "st_gap_inside_b",
+      29186.0
+    ],
+    [
+      "sc_top2_b",
+      25810.4
+    ],
+    [
+      "rc_win_b",
+      24105.6
+    ],
+    [
+      "boat",
+      20631.3
+    ],
+    [
+      "form_win_diff",
+      19831.3
+    ],
+    [
+      "motor_top2_diff",
+      19301.6
+    ],
+    [
+      "nat_top2_diff",
+      17898.5
+    ],
+    [
+      "form_top3_diff",
+      13337.2
+    ]
+  ]
+}

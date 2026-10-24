@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ボートレースAI予想</title>
+<meta name="description" content="Boatrace Open API のデータを使った機械学習によるボートレース予想">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header>
+  <div class="wrap head">
+    <h1>ボートレースAI予想</h1>
+    <select id="date" aria-label="日付"></select>
+  </div>
+</header>
+
+<main class="wrap">
+  <div class="picker">
+    <div class="picker-row"><span class="picker-label">レース場</span><nav id="stadiums" class="tabs" aria-label="レース場"></nav></div>
+    <div class="picker-row"><span class="picker-label">レース</span><nav id="race-tabs" class="tabs races-tabs" aria-label="レース"></nav></div>
+  </div>
+  <section id="races"></section>
+  <p id="empty" class="muted" hidden>この日の予想はありません。</p>
+  <h2 class="section-title">成績</h2>
+  <section id="summary" class="summary"></section>
+</main>
+
+<footer class="wrap muted">
+  <p>データ: <a href="https://github.com/BoatraceOpenAPI">Boatrace Open API</a>、オッズ: <a href="https://www.boatrace.jp/">BOATRACE公式サイト</a>（推奨買い目の取得時点オッズのみ掲載。最新のオッズは公式サイトでご確認ください）。
+  予想は統計モデルの出力であり、的中や利益を保証するものではありません。舟券の購入は自己責任で、20歳以上の方に限られます。</p>
+  <p id="model-info"></p>
+</footer>
+
+<template id="race-tpl">
+  <article class="race">
+    <header class="race-head">
+      <div><strong class="race-no"></strong> <span class="race-title muted"></span></div>
+      <div class="race-meta"><span class="badge model"></span> <span class="closed muted"></span></div>
+    </header>
+    <table class="boats">
+      <thead><tr><th>枠</th><th>選手</th><th class="num hide-sm">勝率</th><th class="num hide-sm" title="今節の平均着順（走数）">今節</th><th class="num hide-sm" title="今節・直近・コース別から推定したスタートタイミング">予想ST</th><th class="num hide-sm" title="展示タイム（括弧内はコース補正後のレース内偏差、マイナスほど良い）">展示</th><th>1着確率</th><th class="num">3着内</th></tr></thead>
+      <tbody></tbody>
+    </table>
+    <div class="picks">
+      <div><h3>3連単 確率上位</h3><ol class="tri"></ol></div>
+      <div class="ev"><h3>期待値 推奨</h3><ul class="ev-list"></ul></div>
+      <div class="result"></div>
+    </div>
+  </article>
+</template>
+
+<script src="app.js"></script>
+</body>
+</html>

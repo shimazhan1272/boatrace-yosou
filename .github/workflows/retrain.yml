@@ -1,0 +1,46 @@
+# 毎月2日 0時(JST)にモデルを再学習（手動実行も可）
+name: retrain model
+
+on:
+  schedule:
+    - cron: "0 15 1 * *"   # 毎月2日 00:00 JST
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: update
+  cancel-in-progress: false
+
+jobs:
+  retrain:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -r requirements.txt
+      - uses: actions/cache@v4
+        with:
+          path: data/raw
+          key: raw-${{ github.run_id }}
+          restore-keys: raw-
+
+      - name: train
+        run: |
+          END=$(TZ=Asia/Tokyo date -d yesterday +%F)
+          START=$(date -d "$END -570 days" +%F)
+          python -m boatrace fetch "$(date -d "$START -365 days" +%F)" "$END"
+          python -m boatrace train "$START" "$END"
+
+      - name: commit
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add models docs/data
+          git diff --cached --quiet || git commit -m "retrain model $(TZ=Asia/Tokyo date +%F)"
+          git push

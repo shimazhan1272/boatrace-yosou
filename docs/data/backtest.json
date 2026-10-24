@@ -1,0 +1,36 @@
+{
+  "train_period": [
+    "2025-04-01",
+    "2026-08-24"
+  ],
+  "valid_period": [
+    "2026-08-25",
+    "2026-10-23"
+  ],
+  "models": {
+    "base": {
+      "races": 9228,
+      "logloss": 1.1862,
+      "win_top1_accuracy": 0.5713,
+      "baseline_boat1_accuracy": 0.5483,
+      "win_top1_roi": 0.9182,
+      "trifecta_hit_top1": 0.088,
+      "trifecta_hit_top5": 0.3157,
+      "trifecta_hit_top10": 0.4751,
+      "trifecta_top5_roi": 0.7637,
+      "best_iteration": 685
+    },
+    "full": {
+      "races": 9135,
+      "logloss": 1.1705,
+      "win_top1_accuracy": 0.5765,
+      "baseline_boat1_accuracy": 0.548,
+      "win_top1_roi": 0.93,
+      "trifecta_hit_top1": 0.0883,
+      "trifecta_hit_top5": 0.3194,
+      "trifecta_hit_top10": 0.4848,
+      "trifecta_top5_roi": 0.7864,
+      "best_iteration": 942
+    }
+  }
+}
