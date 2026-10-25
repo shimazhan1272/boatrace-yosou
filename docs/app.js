@@ -65,8 +65,9 @@ async function fetchLive(silent) {
   const key = { stadium: state.stadium, race: state.race };
   const slow = setTimeout(() => (msg.textContent = "サーバー起動中（最大1分ほどかかります）…"), 4000);
   try {
-    if (!silent) msg.textContent = "取得中…";
-    const res = await fetch(`${API_BASE}/api/race?date=${state.date}&stadium=${key.stadium}&race=${key.race}`);
+    if (!silent) msg.textContent = "直前情報・オッズを取得中…";
+    // 更新ボタンは fresh=1 でキャッシュを使わず取り直す（同じレースは15秒に1回まで）
+    const res = await fetch(`${API_BASE}/api/race?date=${state.date}&stadium=${key.stadium}&race=${key.race}${silent ? "" : "&fresh=1"}`);
     const body = await res.json();
     if (!res.ok) throw new Error(body.detail || res.status);
     const i = day.races.findIndex((r) => r.stadium === key.stadium && r.race_number === key.race);
@@ -158,7 +159,6 @@ async function select({ date, stadium, race }, live = true) {
   note.innerHTML = day.backtest ? `<b>検証データ</b> ${day.note ?? ""}` : "";
   updateDayButtons();
   $("#status").hidden = false;
-  $("#updated").textContent = day.backtest ? "" : `最終更新 ${day.updated_at.slice(11, 16)}`;
 
   const stadiums = [...new Map(day.races.map((r) => [r.stadium, r.stadium_name])).entries()];
   state.stadium = stadiums.some(([n]) => n === stadium) ? stadium : stadiums[0]?.[0];
@@ -169,7 +169,15 @@ async function select({ date, stadium, race }, live = true) {
   if (location.hash !== hash) history.replaceState(null, "", hash);
   renderTabs(stadiums, races);
   renderRace(races.find((r) => r.race_number === state.race));
+  updateTime();
   if (live) scheduleLive();
+}
+
+// 最終更新: 表示中のレースを API で取り直していればその時刻、なければ公開データの更新時刻
+function updateTime() {
+  const r = currentRace();
+  const t = r?.live?.fetched_at ?? (day.backtest ? null : day.updated_at);
+  $("#updated").textContent = t ? `最終更新 ${t.slice(11, r?.live ? 19 : 16)}` : "";
 }
 
 // 未指定なら次に締切を迎えるレース、全て終わっていれば1R

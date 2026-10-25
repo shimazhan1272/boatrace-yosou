@@ -30,6 +30,7 @@ ALLOWED_ORIGINS = os.environ.get(
 
 BEFOREINFO_TTL = 60   # 展示前（未取得）の再確認間隔。取得できたら以降は再取得しない
 ODDS_TTL = 60
+FRESH_TTL = 15        # 更新ボタン（fresh=1）のときの間隔。押すたびに取り直すが、同じレースは15秒に1回まで
 PROGRAMS_TTL = 30 * 60
 
 app = FastAPI(title="boatrace-yosou API")
@@ -67,22 +68,22 @@ def _program(d: date, stadium: int, race: int):
     return next((p for p in hit[1] if p["race_stadium_number"] == stadium and p["race_number"] == race), None)
 
 
-def _beforeinfo(d, stadium, race):
+def _beforeinfo(d, stadium, race, ttl=BEFOREINFO_TTL):
     key = (d, stadium, race)
     hit = _before.get(key)
-    if hit and (hit[1] is not None or time.time() - hit[0] < BEFOREINFO_TTL):
+    if hit and (hit[1] is not None or time.time() - hit[0] < ttl):
         return hit[1]
     data = beforeinfo.fetch_beforeinfo(d, stadium, race)
     _before[key] = (time.time(), data)
     return data
 
 
-def _live_odds(d, stadium, race, final=False):
+def _live_odds(d, stadium, race, final=False, ttl=ODDS_TTL):
     """締切前は60秒キャッシュ、締切後（締切時オッズ）は取れたら以降は取り直さない。"""
     key = (d, stadium, race)
     hit = _odds.get(key)
     if hit and (hit[1].get("final") and hit[1]["trifecta"]
-                or not final and time.time() - hit[0] < ODDS_TTL):
+                or not final and time.time() - hit[0] < ttl):
         return hit[1]
     data = odds.fetch_odds(d, stadium, race, final=final, exacta=False)
     _odds[key] = (time.time(), data)
@@ -107,7 +108,8 @@ def _preload():
 
 
 @app.get("/api/race")
-def race(date_: date = Query(alias="date"), stadium: int = Query(ge=1, le=24), race: int = Query(ge=1, le=12)):
+def race(date_: date = Query(alias="date"), stadium: int = Query(ge=1, le=24), race: int = Query(ge=1, le=12),
+         fresh: bool = False):
     if date_ != today_jst():
         raise HTTPException(400, "更新できるのは当日のレースのみです")
     program = _program(date_, stadium, race)
@@ -119,8 +121,9 @@ def race(date_: date = Query(alias="date"), stadium: int = Query(ge=1, le=24), r
 
     # 直前情報とオッズは並行して取る（公式サイトへのリクエスト開始は odds._get が間隔をあける）
     with ThreadPoolExecutor(2) as pool:
-        f_before = pool.submit(_beforeinfo, date_, stadium, race)
-        f_odds = pool.submit(_live_odds, date_, stadium, race, is_closed)
+        ttl = FRESH_TTL if fresh else None  # fresh: 更新ボタンから。キャッシュを短くして取り直す
+        f_before = pool.submit(_beforeinfo, date_, stadium, race, ttl or BEFOREINFO_TTL)
+        f_odds = pool.submit(_live_odds, date_, stadium, race, is_closed, ttl or ODDS_TTL)
         rh, sh = _get_context(date_)
         try:
             preview = f_before.result()
