@@ -1,10 +1,12 @@
 """学習・検証・当日予測・サイト用JSON出力。"""
 import json
+import os
 import time
 from datetime import date, datetime, timedelta
 
 import numpy as np
 import pandas as pd
+import requests
 
 from . import beforeinfo, model, odds, strategy
 from .config import DATA_DIR, JST, MODEL_DIR, RACER_CLASSES, SITE_DATA_DIR, STADIUMS, today_jst
@@ -353,6 +355,35 @@ BEFOREINFO_WINDOW_MIN = 45  # 締切この分数前から公式サイトの直�
 BEFOREINFO_DIR = DATA_DIR / "beforeinfo"
 
 
+API_BASE = os.environ.get("API_BASE", "https://boatrace-yosou-api.onrender.com")
+
+
+def _import_snapshots(d: date):
+    """Render の API が毎分集めた直前情報を取り込み、data/beforeinfo に保存する（取得時刻付き）。"""
+    try:
+        res = requests.get(f"{API_BASE}/api/snapshots", params={"date": str(d)}, timeout=90)
+        res.raise_for_status()
+        previews = res.json().get("previews", [])
+    except Exception as e:
+        print(f"  snapshots unavailable: {e}")
+        return
+    added = 0
+    for data in previews:
+        path = BEFOREINFO_DIR / f"{d:%Y%m%d}" / f"{data['race_stadium_number']:02d}_{data['race_number']:02d}.json"
+        if not path.exists():
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
+            added += 1
+    print(f"  snapshots: {len(previews)} races from API, {added} new")
+
+
+def _preview_fetched_at(d: date, stadium: int, race_number: int) -> str | None:
+    path = BEFOREINFO_DIR / f"{d:%Y%m%d}" / f"{stadium:02d}_{race_number:02d}.json"
+    if not path.exists():
+        return None
+    return json.loads(path.read_text(encoding="utf-8")).get("fetched_at")
+
+
 def _merge_official_previews(d: date, programs, previews, now: datetime):
     """Open API に展示タイムがまだ無いレースは、締切が近ければ公式サイトから直前情報を取る。
 
@@ -396,6 +427,7 @@ def predict_day(d: date, final_odds_limit: int | None = FINAL_ODDS_PER_RUN) -> d
     if not programs:
         return {"date": str(d), "races": []}
     if d == today_jst():
+        _import_snapshots(d)
         previews = _merge_official_previews(d, programs, previews, datetime.now(JST))
 
     past = load_range(d - timedelta(days=HISTORY_DAYS), d - timedelta(days=1))
@@ -432,7 +464,16 @@ def predict_day(d: date, final_odds_limit: int | None = FINAL_ODDS_PER_RUN) -> d
     for rid, g in df.groupby("race_id", sort=False):
         race = _race_prediction(g, "full" if g["full"].iloc[0] else "base")
         old = previous.get(rid)
-        if old and race["closed_at"] and race["closed_at"] <= now:
+        fetched_at = _preview_fetched_at(d, race["stadium"], race["race_number"])
+        if (old and race["closed_at"] and race["closed_at"] <= now and old.get("model") == "base"
+                and race["model"] == "full" and fetched_at and fetched_at < race["closed_at"]):
+            # 締切前に取得できていた直前情報で予想し直す（定期実行が締切に間に合わなかったレース）。
+            # 使う情報は締切前のものだけなので後出しにはならない
+            race["recorded_after_close"] = True
+            for k in ("odds", "final_odds_checked", "ev"):
+                if k in old:
+                    race[k] = old[k]
+        elif old and race["closed_at"] and race["closed_at"] <= now:
             # 締切後は予測を凍結し、後出しにならないようにする
             fresh, race = race, {k: v for k, v in old.items() if k != "result"}
             for fb, ob in zip(fresh["boats"], race["boats"]):

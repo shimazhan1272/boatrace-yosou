@@ -327,6 +327,7 @@ function renderRace(r) {
     const badge = $(".model", el);
     badge.textContent = r.model === "full" ? "直前情報あり" : "出走表のみ";
     badge.classList.add(r.model);
+    if (r.recorded_after_close) badge.title = "直前情報は締切前に取得。予想の記録は締切後（定期実行の遅れのため）";
     const moved = r.boats.some((b) => b.course != null && b.course !== b.boat);
     if (moved) badge.insertAdjacentHTML("afterend", ' <span class="badge moved-badge">進入変化</span>');
     $(".closed", el).textContent = [

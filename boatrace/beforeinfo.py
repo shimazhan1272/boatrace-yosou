@@ -5,8 +5,9 @@ Open API の直前情報は約3時間おきにしか更新されず締切に間�
 アクセス間隔などは odds.py と共通（同じセッション・同じ待ち時間）。
 """
 import re
-from datetime import date
+from datetime import date, datetime
 
+from .config import JST
 from .odds import _get
 
 BEFOREINFO_URL = "https://www.boatrace.jp/owpc/pc/race/beforeinfo?rno={rno}&jcd={jcd:02d}&hd={hd}"
@@ -85,5 +86,6 @@ def fetch_beforeinfo(d: date, stadium: int, race_number: int) -> dict | None:
     html = _get(BEFOREINFO_URL.format(rno=race_number, jcd=stadium, hd=f"{d:%Y%m%d}"))
     data = parse_beforeinfo(html)
     if data:
-        data.update({"race_date": d.isoformat(), "race_stadium_number": stadium, "race_number": race_number})
+        data.update({"race_date": d.isoformat(), "race_stadium_number": stadium, "race_number": race_number,
+                     "fetched_at": datetime.now(JST).strftime("%Y-%m-%d %H:%M:%S")})  # 締切前に取れたかの判定用
     return data

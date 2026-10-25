@@ -11,8 +11,9 @@ import os
 import threading
 import time
 from concurrent.futures import ThreadPoolExecutor
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 
+import requests
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -61,11 +62,15 @@ def _get_context(d: date):
     return _context[d]
 
 
-def _program(d: date, stadium: int, race: int):
+def _programs_of(d: date) -> list[dict]:
     hit = _programs.get(d)
     if not hit or time.time() - hit[0] > PROGRAMS_TTL:
         hit = _programs[d] = (time.time(), fetch_day("programs", d, force=True))
-    return next((p for p in hit[1] if p["race_stadium_number"] == stadium and p["race_number"] == race), None)
+    return hit[1]
+
+
+def _program(d: date, stadium: int, race: int):
+    return next((p for p in _programs_of(d) if p["race_stadium_number"] == stadium and p["race_number"] == race), None)
 
 
 def _beforeinfo(d, stadium, race, ttl=BEFOREINFO_TTL):
@@ -95,9 +100,48 @@ def health():
     return {"ok": True, "time": datetime.now(JST).isoformat(timespec="seconds")}
 
 
+COLLECT_INTERVAL = 60      # 直前情報の自動収集の間隔（秒）
+COLLECT_WINDOW_MIN = 25    # 締切この分数前から、展示が出るまで直前情報を取りに行く
+
+
+def _collect_once():
+    """締切が近い全レースの直前情報を集める（展示が出たレースは以降取りに行かない）。"""
+    now = datetime.now(JST)
+    d = now.date()
+    for p in _programs_of(d):
+        closed = datetime.strptime(p["race_closed_at"], "%Y-%m-%d %H:%M:%S").replace(tzinfo=JST)
+        if now < closed <= now + timedelta(minutes=COLLECT_WINDOW_MIN):
+            try:
+                _beforeinfo(d, p["race_stadium_number"], p["race_number"])
+            except Exception as e:
+                print(f"collect failed {p['race_stadium_number']}-{p['race_number']}: {e}")
+
+
+SELF_URL = os.environ.get("RENDER_EXTERNAL_URL")  # Render が設定する公開 URL
+SELF_PING_INTERVAL = 10 * 60
+
+
+def _collector():
+    """GitHub Actions の定期実行は遅れがちなので、直前情報はこのサーバーが毎分集めておく。
+
+    無料枠は外部からのアクセスが15分無いと停止するので、開催時間中は自分の URL に10分おきにアクセスする。
+    """
+    last_ping = 0.0
+    while True:
+        try:
+            if 7 <= datetime.now(JST).hour < 23:
+                _collect_once()
+                if SELF_URL and time.time() - last_ping > SELF_PING_INTERVAL:
+                    requests.get(f"{SELF_URL}/health", timeout=30)
+                    last_ping = time.time()
+        except Exception as e:
+            print(f"collector error: {e}")
+        time.sleep(COLLECT_INTERVAL)
+
+
 @app.on_event("startup")
 def _preload():
-    """当日の context とモデルを裏で読み込んでおき、最初のボタン操作を速くする。"""
+    """当日の context とモデルを裏で読み込み、直前情報の自動収集を始める。"""
     def load():
         try:
             _booster("base"), _booster("full")
@@ -105,6 +149,14 @@ def _preload():
         except Exception:
             pass
     threading.Thread(target=load, daemon=True).start()
+    threading.Thread(target=_collector, daemon=True).start()
+
+
+@app.get("/api/snapshots")
+def snapshots(date_: date = Query(alias="date")):
+    """このサーバーが集めた当日の直前情報（取得時刻付き）。定期実行が取り込んで保存する。"""
+    previews = [data for (d, _, _), (_, data) in list(_before.items()) if d == date_ and data]
+    return {"date": str(date_), "previews": previews}
 
 
 @app.get("/api/race")
