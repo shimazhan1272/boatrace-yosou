@@ -1,21 +1,36 @@
 {
- "updated_at": "2026-10-25 22:15:30",
+ "updated_at": "2026-10-26 06:35:47",
  "tri_bets": 5,
  "days": [
+  {
+   "date": "2026-10-26",
+   "file": "predictions/20261026.json",
+   "backtest": false,
+   "races": 144,
+   "scored": 0,
+   "honmei_hits": 0,
+   "trifecta_hits": 0,
+   "bet": 0,
+   "return": 0,
+   "ev_races": 0,
+   "ev_hits": 0,
+   "ev_bet": 0,
+   "ev_return": 0
+  },
   {
    "date": "2026-10-25",
    "file": "predictions/20261025.json",
    "backtest": false,
    "races": 168,
-   "scored": 157,
-   "honmei_hits": 92,
-   "trifecta_hits": 59,
-   "bet": 78500,
-   "return": 65520,
-   "ev_races": 130,
-   "ev_hits": 17,
-   "ev_bet": 38900,
-   "ev_return": 35290
+   "scored": 167,
+   "honmei_hits": 97,
+   "trifecta_hits": 63,
+   "bet": 83500,
+   "return": 68570,
+   "ev_races": 139,
+   "ev_hits": 18,
+   "ev_bet": 41600,
+   "ev_return": 42860
   },
   {
    "date": "2026-10-24",
