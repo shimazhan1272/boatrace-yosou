@@ -31,7 +31,9 @@ async function init() {
   window.addEventListener("hashchange", () => select(parseHash()));
   // タブに戻ってきたら、待たずに最新を取りに行く
   document.addEventListener("visibilitychange", () => {
-    if (document.visibilityState === "visible" && needsLive(currentRace())) fetchLive(true);
+    if (document.visibilityState !== "visible") return;
+    mergeLiveDay();
+    if (needsLive(currentRace())) fetchLive(true);
   });
   const m = index.models.full || index.models.base;
   if (m) {
@@ -90,14 +92,50 @@ async function fetchLive(silent) {
   }
 }
 
-// 表示中のレースの自動取得を（再）開始する
+// 当日の全レース: サーバーが毎分集めた直前情報で予想し直した結果を取り込む。
+// 定期実行（GitHub）を待たずに、開いていないレースも展示後すぐ「直前情報あり」になる
+let dayBusy = false;
+async function mergeLiveDay() {
+  if (!API_BASE || dayBusy || !day || day.date !== todayJST()) return;
+  dayBusy = true;
+  try {
+    const res = await fetch(`${API_BASE}/api/day?date=${day.date}`);
+    if (!res.ok) return;
+    const live = await res.json();
+    const now = nowJST();
+    let changed = false;
+    for (const lr of live.races) {
+      const i = day.races.findIndex((r) => r.race_id === lr.race_id);
+      if (i < 0) continue;
+      const sr = day.races[i];
+      if (sr.live) continue;  // レース単位で取り直したものの方が新しい
+      // 締切前は常に最新、締切後は記録が出走表のみで、締切前に直前情報が取れていた場合だけ差し替える
+      if (!(sr.closed_at > now || (sr.model === "base" && lr.model === "full"))) continue;
+      if (JSON.stringify(sr.boats.map((b) => b.win)) === JSON.stringify(lr.boats.map((b) => b.win)) && sr.model === lr.model) continue;
+      for (const k of ["result", "meet_day", "odds", "ev", "final_odds_checked"]) if (sr[k] !== undefined) lr[k] = sr[k];
+      lr.boats.forEach((b, k) => (b.meet = sr.boats[k]?.meet));
+      day.races[i] = lr;
+      changed = true;
+    }
+    if (changed) await select({ ...state }, false);
+  } catch (e) {
+    // 失敗しても公開データの表示のまま
+  } finally {
+    dayBusy = false;
+  }
+}
+
+// 表示中のレースの自動取得と、当日全レースの取り込みを（再）開始する
 function scheduleLive() {
   clearInterval(liveTimer);
-  if (!needsLive(currentRace())) return;
-  fetchLive(true);
+  const today = day && day.date === todayJST();
+  if (!today) return;
+  mergeLiveDay();
+  if (needsLive(currentRace())) fetchLive(true);
   liveTimer = setInterval(() => {
-    if (!needsLive(currentRace())) return clearInterval(liveTimer);
-    if (document.visibilityState === "visible") fetchLive(true);
+    if (document.visibilityState !== "visible") return;
+    mergeLiveDay();
+    if (needsLive(currentRace())) fetchLive(true);
   }, LIVE_INTERVAL);
 }
 

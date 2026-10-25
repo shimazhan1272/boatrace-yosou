@@ -16,6 +16,7 @@ from datetime import date, datetime, timedelta
 import requests
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
 
 from . import beforeinfo, model, odds, strategy
 from .config import JST, today_jst
@@ -35,6 +36,7 @@ FRESH_TTL = 15        # 更新ボタン（fresh=1）のときの間隔。押す�
 PROGRAMS_TTL = 30 * 60
 
 app = FastAPI(title="boatrace-yosou API")
+app.add_middleware(GZipMiddleware, minimum_size=1000)
 app.add_middleware(CORSMiddleware, allow_origins=ALLOWED_ORIGINS, allow_methods=["GET"], allow_headers=["*"])
 
 _boosters = {}
@@ -131,6 +133,7 @@ def _collector():
         try:
             if 7 <= datetime.now(JST).hour < 23:
                 _collect_once()
+                _live_day(today_jst())  # 画面からの取得がすぐ返るよう、毎分作っておく
                 if SELF_URL and time.time() - last_ping > SELF_PING_INTERVAL:
                     requests.get(f"{SELF_URL}/health", timeout=30)
                     last_ping = time.time()
@@ -150,6 +153,42 @@ def _preload():
             pass
     threading.Thread(target=load, daemon=True).start()
     threading.Thread(target=_collector, daemon=True).start()
+
+
+DAY_TTL = 60
+_day_cache = {}   # date -> (computed, payload)
+_day_lock = threading.Lock()
+
+
+def _live_day(d: date) -> dict:
+    """集めた直前情報を使って、当日の全レースを予想し直す（1分キャッシュ）。"""
+    with _day_lock:
+        hit = _day_cache.get(d)
+        if hit and time.time() - hit[0] < DAY_TTL:
+            return hit[1]
+        programs = _programs_of(d)
+        rh, sh = _get_context(d)
+        previews = [data for (dd, _, _), (_, data) in list(_before.items()) if dd == d and data]
+        df = add_features(build_frame(programs, previews), rh, sh)
+        df["full"] = has_preview(df)
+        df["p"] = model.win_probs(_booster("base"), df, "base")
+        sub = df[df["full"]]
+        if len(sub):
+            df.loc[sub.index, "p"] = model.win_probs(_booster("full"), sub, "full")
+        races = [_race_prediction(g, "full" if g["full"].iloc[0] else "base")
+                 for _, g in df.groupby("race_id", sort=False)]
+        payload = {"date": str(d), "computed_at": datetime.now(JST).strftime("%Y-%m-%d %H:%M:%S"), "races": races}
+        _day_cache.clear()
+        _day_cache[d] = (time.time(), payload)
+        return payload
+
+
+@app.get("/api/day")
+def live_day(date_: date = Query(alias="date")):
+    """当日の全レースの最新の予想（直前情報が集まったレースは直前情報ありの予想）。"""
+    if date_ != today_jst():
+        raise HTTPException(400, "当日のみです")
+    return _live_day(date_)
 
 
 @app.get("/api/snapshots")
