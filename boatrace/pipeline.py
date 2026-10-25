@@ -292,6 +292,44 @@ def _attach_ev(race: dict, d: date, now: datetime):
     strategy.attach(race, book, book["fetched_at"])
 
 
+def attach_meet(races: list[dict], d: date, programs, today_results=()):
+    """各艇に今節（同じ場の節）の1走ごとの成績を付ける。
+
+    boat["meet"] = [[何日目, レース番号, 枠, 進入, ST, 着順], ...]、race["meet_day"] = その日が何日目か。
+    節の初日は、その日から遡って同じ場で開催が続いている最初の日（前検日で途切れる）。
+    当日分は結果の出たレースだけ。画面では表示中のレースより前の走だけを出す。
+    """
+    racer_of = {(f"{p['race_date'].replace('-', '')}_{p['race_stadium_number']:02d}_{p['race_number']:02d}",
+                 b["racer_boat_number"]): b["racer_number"] for p in programs for b in p["boats"]}
+    past = {d - timedelta(days=k): fetch_day("results", d - timedelta(days=k)) for k in range(1, 8)}
+    start = {}
+    for s in {r["stadium"] for r in races}:
+        start[s] = d
+        for k in range(1, 8):
+            if not any(r["race_stadium_number"] == s for r in past[d - timedelta(days=k)]):
+                break
+            start[s] = d - timedelta(days=k)
+
+    entries: dict[tuple, list] = {}
+    for day, results in [*past.items(), (d, today_results)]:
+        for r in results:
+            s = r["race_stadium_number"]
+            if s not in start or day < start[s]:
+                continue
+            for b in r["boats"]:
+                if b.get("racer_place_number") is None:
+                    continue  # 未確定
+                entries.setdefault((s, b.get("racer_number")), []).append([
+                    (day - start[s]).days + 1, r["race_number"], b["racer_boat_number"],
+                    b.get("racer_course_number"), b.get("racer_start_timing"), b["racer_place_number"],
+                ])
+    for race in races:
+        race["meet_day"] = (d - start[race["stadium"]]).days + 1
+        for b in race["boats"]:
+            racer = racer_of.get((race["race_id"], b["boat"]))
+            b["meet"] = sorted(entries.get((race["stadium"], racer), []))
+
+
 FINAL_ODDS_PER_RUN = 15  # 1回の定期実行で締切時オッズを取りに行く最大レース数
 
 
@@ -408,6 +446,7 @@ def predict_day(d: date, final_odds_limit: int | None = FINAL_ODDS_PER_RUN) -> d
         _score(race, res_by_id.get(rid), pays.get(rid))
         races.append(race)
     races.sort(key=lambda r: (r["stadium"], r["race_number"]))
+    attach_meet(races, d, programs, results)
     _attach_final_odds(races, d, now, final_odds_limit)
 
     data = {"date": str(d), "updated_at": now, "races": races}

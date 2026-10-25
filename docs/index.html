@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>ボートレースAI予想</title>
 <meta name="description" content="Boatrace Open API のデータを使った機械学習によるボートレース予想">
-<link rel="stylesheet" href="style.css?v=20">
+<link rel="stylesheet" href="style.css?v=21">
 </head>
 <body>
 <header>
@@ -49,7 +49,7 @@
     </header>
     <div class="table-scroll">
     <table class="boats">
-      <thead><tr><th>枠</th><th>選手</th><th class="num hide-sm">勝率</th><th class="num hide-sm" title="今節の平均着順（走数）">今節</th><th class="num hide-sm" title="今節・直近・コース別から推定したスタートタイミング">予想ST</th><th class="num hide-sm" title="展示タイム（括弧内はコース補正後のレース内偏差、マイナスほど良い）">展示</th><th class="num">1着確率</th><th class="num">2着内</th><th class="num">3着内</th></tr></thead>
+      <thead><tr><th>枠</th><th>選手</th><th class="num hide-sm">勝率</th><th class="num hide-sm" title="今節・直近・コース別から推定したスタートタイミング">予想ST</th><th class="num hide-sm" title="展示タイム（括弧内はコース補正後のレース内偏差、マイナスほど良い）">展示</th><th class="num">1着確率</th><th class="num">2着内</th><th class="num">3着内</th><th>今節</th></tr></thead>
       <tbody></tbody>
     </table>
     </div>
@@ -65,7 +65,7 @@
         <dt>枠</dt><dd>艇番（枠番）。色は艇番ごとの公式カラー。</dd>
         <dt>選手</dt><dd>選手名と級別（A1 → A2 → B1 → B2 の順に上位）。</dd>
         <dt>勝率</dt><dd>全国勝率。1着10点・2着8点・3着6点・4着4点・5着2点・6着1点の1走あたり平均点（今期の成績）。</dd>
-        <dt>今節</dt><dd>いま開催中の節（同じレース場で4〜7日間続くシリーズ）で、前日までに走ったレースの平均着順。括弧内は走った回数。小さいほど好調。節の初日は「-」。</dd>
+        <dt>今節</dt><dd>いま開催中の節（同じレース場で4〜7日間続くシリーズ）の、このレースより前の成績。日ごとに、レース番号（色はその走の枠番）・進入コース・ST・着順を表示。左上は今節の平均着順。着順の F はフライング、L は出遅れ、欠 は欠場、失 は転覆・失格など。節の初日の前半レースなど、まだ走っていない場合は「-」。</dd>
         <dt>予想ST</dt><dd>予想されるスタートタイミング（秒）。今節の平均ST（2走以上）→ 直近90日 → 期別平均の順に使い、このコースでのST（過去1年5走以上）があればそれを優先。小さいほど早い。</dd>
         <dt>展示</dt><dd>展示航走のタイム（秒）。括弧内はコース補正後の値：レース内平均との差から、そのレース場・コースのいつもの差（過去1年）を引いたもの。マイナスほど良い。展示前は「-」。</dd>
         <dt>1着確率</dt><dd>AI が予想した1着になる確率（6艇の合計100%）。</dd>
@@ -78,6 +78,7 @@
       </dl>
     </details>
     <div class="tri-box"><h3>3連単 確率上位20点 <small class="odds-note muted"></small></h3><ol class="tri"></ol>
+      <div class="tri-sel"></div>
       <details class="legend">
         <summary>3連単の項目の説明</summary>
         <dl>
@@ -87,6 +88,7 @@
           <dt>オッズ</dt><dd>公式サイトの3連単オッズ（倍）。締切前は取得時点の値で、締切までに変動する。締切後は締切時オッズ。</dd>
           <dt>期待値</dt><dd>確率 × オッズ を%で表示。100円買ったときに平均して戻ってくる金額の目安（例: 120% なら平均120円）。100%を超えるものは緑で表示。ただし確率はモデルの推定値なので、特に大穴では高く出やすい点に注意。</dd>
           <dt>緑の行</dt><dd>レース結果で的中した組番。</dd>
+          <dt>選択・合成オッズ</dt><dd>組番をクリックすると選択（✓）でき、選んだ買い目全体の合成オッズ（1 ÷ 各オッズの逆数の合計）を表示。どれが当たっても払戻が同じになるよう賭け金を配分したときのオッズにあたる。的中確率は選んだ組番の確率の合計、期待値は 的中確率 × 合成オッズ。</dd>
         </dl>
       </details>
     </div>
@@ -96,6 +98,6 @@
   </article>
 </template>
 
-<script src="app.js?v=20"></script>
+<script src="app.js?v=21"></script>
 </body>
 </html>

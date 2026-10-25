@@ -86,6 +86,19 @@ select { font: inherit; padding: 6px 10px; border-radius: 8px; border: 1px solid
 .legend dt { font-weight: 700; white-space: nowrap; }
 .legend dd { margin: 0; color: var(--muted); }
 
+/* 今節成績 */
+.boats td.meet { white-space: nowrap; padding-top: 3px; padding-bottom: 3px; }
+.meet-grid { display: flex; gap: 0; font-size: 11px; line-height: 1.25; }
+.md { border-left: 1px solid var(--line); }
+.md-label { border-left: 0; color: var(--muted); }
+.md-h { text-align: center; font-size: 10px; color: var(--muted); padding: 0 3px; border-bottom: 1px solid var(--line); }
+.md-races { display: flex; }
+.mr { display: grid; grid-template-rows: repeat(4, auto); justify-items: center; min-width: 26px; padding: 1px 2px; font-variant-numeric: tabular-nums; }
+.mr-r { display: inline-block; min-width: 18px; text-align: center; border-radius: 3px; font-weight: 700; border: 1px solid rgba(127, 127, 127, .5); }
+.mr-p { font-weight: 700; }
+.mr-p.first { color: #e03131; }
+.mr-p.bad { color: var(--muted); }
+
 /* スタート展示 */
 .start-ex { margin-top: 12px; max-width: 420px; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
 .start-ex h3 { margin: 0; padding: 6px 10px; font-size: 13px; font-weight: 700; text-align: center; color: #fff; background: #1f4e9c; }
@@ -111,6 +124,14 @@ select { font: inherit; padding: 6px 10px; border-radius: 8px; border: 1px solid
 .tri-box .tri .rank { font-size: 11px; color: var(--muted); }
 .tri-box .tri .p, .tri-box .tri .o, .tri-box .tri .ev { text-align: right; }
 .tri-box .tri .ev.plus { color: var(--hit); font-weight: 700; }
+.tri-box .tri li.pick { cursor: pointer; }
+.tri-box .tri li.pick:hover { background: color-mix(in srgb, var(--accent) 8%, transparent); }
+.tri-box .tri li.sel { background: color-mix(in srgb, var(--accent) 20%, transparent); }
+.tri-box .tri li.sel .rank { color: var(--accent); font-weight: 700; }
+.tri-sel { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 16px; margin-top: 8px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; font-size: 13px; }
+.tri-sel b { font-size: 15px; font-variant-numeric: tabular-nums; }
+.tri-sel b.plus { color: var(--hit); }
+.tri-sel .sel-clear { margin-left: auto; font: inherit; font-size: 12px; padding: 3px 10px; border-radius: 6px; border: 1px solid var(--line); background: var(--card); color: var(--text); cursor: pointer; }
 .tri-box .tri li.hit { background: color-mix(in srgb, var(--hit) 14%, transparent); border-radius: 4px; }
 .picks { margin-top: 12px; }
 .ev-list { margin: 0; padding: 0; list-style: none; font-variant-numeric: tabular-nums; }

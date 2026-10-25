@@ -70,7 +70,11 @@ async function fetchLive(silent) {
     const body = await res.json();
     if (!res.ok) throw new Error(body.detail || res.status);
     const i = day.races.findIndex((r) => r.stadium === key.stadium && r.race_number === key.race);
-    if (i >= 0) body.result = day.races[i].result;  // 結果は公開データ側のものを使う
+    if (i >= 0) {
+      body.result = day.races[i].result;  // 結果・今節成績は公開データ側のものを使う
+      body.meet_day = day.races[i].meet_day;
+      body.boats.forEach((b, k) => (b.meet = day.races[i].boats[k]?.meet));
+    }
     if (i >= 0) day.races[i] = body; else day.races.push(body);
     // 取得中に別のレースへ移っていたら、画面はそのまま（データだけ更新）
     if (state.stadium === key.stadium && state.race === key.race) await select({ ...state }, false);
@@ -205,6 +209,63 @@ function tab(html, pressed, onclick) {
   return b;
 }
 
+// 3連単の選択（レースごと。自動更新で再描画しても残す）
+const selections = new Map();
+const picked = (r) => {
+  if (!selections.has(r.race_id)) selections.set(r.race_id, new Set());
+  return selections.get(r.race_id);
+};
+
+// 選択した買い目の合成オッズ = 1 / Σ(1/オッズ)。どれが当たっても払戻が同じになるよう賭け金を配分した場合のオッズ
+function renderPicked(box, r) {
+  const out = $(".tri-sel", box);
+  const set = picked(r);
+  if (!set.size) {
+    out.innerHTML = `<span class="muted">組番をクリックすると選択でき、合成オッズを計算します</span>`;
+    return;
+  }
+  const odds = r.odds?.trifecta ?? {};
+  const prob = Object.fromEntries(r.trifecta);
+  const sel = [...set];
+  const p = sel.reduce((a, c) => a + (prob[c] ?? 0), 0);
+  const missing = sel.filter((c) => !odds[c]);
+  const synth = missing.length ? null : 1 / sel.reduce((a, c) => a + 1 / odds[c], 0);
+  const ev = synth ? p * synth : null;
+  out.innerHTML = `
+    <span>選択 <b>${sel.length}</b>点</span>
+    <span>合成オッズ <b>${synth ? synth.toFixed(2) + "倍" : "-"}</b></span>
+    <span>的中確率 <b>${pct(p)}</b></span>
+    <span>期待値 <b class="${ev >= 1 ? "plus" : ""}">${ev ? Math.round(ev * 100) + "%" : "-"}</b></span>
+    ${missing.length ? `<small class="muted">オッズ未取得の組番があります</small>` : ""}
+    <button type="button" class="sel-clear">選択解除</button>`;
+  $(".sel-clear", out).onclick = () => {
+    set.clear();
+    box.querySelectorAll("li.sel").forEach((li) => {
+      li.classList.remove("sel");
+      li.querySelector(".rank").textContent = r.trifecta.findIndex(([c]) => c === li.dataset.c) + 1;
+    });
+    renderPicked(box, r);
+  };
+}
+
+// 今節成績: 日ごとに レース番号（枠番の色）・進入・ST・着順。表示中のレースより前の走だけ
+const PLACE_LABEL = { 14: "F", 15: "L", 16: "欠" };
+const placeLabel = (p) => (p <= 6 ? p : PLACE_LABEL[p] ?? "失");
+function meetCell(b, r) {
+  const runs = (b.meet ?? []).filter(([day, rn]) => day < r.meet_day || (day === r.meet_day && rn < r.race_number));
+  if (!runs.length) return '<span class="muted">-</span>';
+  const finished = runs.filter((x) => x[5] <= 6);
+  const avg = finished.length ? (finished.reduce((a, x) => a + x[5], 0) / finished.length).toFixed(2) : "-";
+  const days = [...new Set(runs.map((x) => x[0]))];
+  const label = `<div class="md md-label"><div class="md-h">平均${avg}</div><div class="mr"><span>R</span><span>進入</span><span>ST</span><span>着</span></div></div>`;
+  return `<div class="meet-grid">${label}${days.map((day) => `
+    <div class="md"><div class="md-h">${day === 1 ? "初日" : day + "日目"}</div><div class="md-races">${
+      runs.filter((x) => x[0] === day).map(([, rn, boat, course, st, place]) => `
+        <div class="mr"><span class="mr-r l${boat}">${rn}</span><span>${course ?? "-"}</span><span>${fmtST(st)}</span>`
+        + `<span class="mr-p ${place === 1 ? "first" : place > 6 ? "bad" : ""}">${placeLabel(place)}</span></div>`).join("")
+    }</div></div>`).join("")}</div>`;
+}
+
 // ".02" / "F.03" 形式の ST 表示
 const fmtST = (st) => (st == null ? "-" : (st < 0 ? "F" : "") + "." + String(Math.round(Math.abs(st) * 100)).padStart(2, "0"));
 
@@ -270,12 +331,12 @@ function renderRace(r) {
         <td><span class="lane l${b.boat}">${b.boat}</span></td>
         <td class="name">${b.name}<span class="cls">${b.class}</span></td>
         <td class="num hide-sm">${b.nat_win?.toFixed(2) ?? "-"}</td>
-        <td class="num hide-sm">${b.meet_place != null ? `${b.meet_place.toFixed(2)}<small class="muted">(${b.meet_races})</small>` : "-"}</td>
         <td class="num hide-sm">${b.st_exp != null ? "." + Math.round(b.st_exp * 100).toString().padStart(2, "0") : "-"}</td>
         <td class="num hide-sm">${b.ex_time != null ? `${b.ex_time.toFixed(2)}<small class="${b.ex_adj < 0 ? "good" : "muted"}">(${b.ex_adj > 0 ? "+" : ""}${b.ex_adj.toFixed(2)})</small>` : "-"}</td>
         <td class="num win">${pct(b.win)}</td>
         <td class="num">${pct(b.top2)}</td>
         <td class="num">${pct(b.top3)}</td>
+        <td class="meet">${meetCell(b, r)}</td>
       </tr>`).join("");
 
     renderStart($(".start-ex", el), r);
@@ -288,12 +349,24 @@ function renderRace(r) {
     const rows = r.trifecta.slice(0, 20).map(([c, p], i) => {
       const o = odds[c];
       const ev = o ? p * o : null;
-      return `<li class="${hitCombos.has(c) ? "hit" : ""}"><span class="rank">${i + 1}</span>${combo(c)}`
+      const sel = picked(r).has(c);
+      return `<li data-c="${c}" class="pick ${hitCombos.has(c) ? "hit" : ""} ${sel ? "sel" : ""}" title="クリックで選択"><span class="rank">${sel ? "✓" : i + 1}</span>${combo(c)}`
         + `<span class="p">${pct(p)}</span><span class="o">${o ? o.toFixed(1) : "-"}</span>`
         + `<span class="ev ${ev >= 1 ? "plus" : ""}">${ev ? Math.round(ev * 100) + "%" : "-"}</span></li>`;
     });
     // PC は 1〜10位 / 11〜20位 の2列（各列に見出し）、スマホは1列
     $(".tri", el).innerHTML = head + rows.slice(0, 10).join("") + head.replace("tri-head", "tri-head second") + rows.slice(10).join("");
+    const triBox = $(".tri-box", el);
+    $(".tri", el).addEventListener("click", (e) => {
+      const li = e.target.closest("li[data-c]");
+      if (!li) return;
+      const set = picked(r);
+      set.has(li.dataset.c) ? set.delete(li.dataset.c) : set.add(li.dataset.c);
+      li.classList.toggle("sel");
+      li.querySelector(".rank").textContent = set.has(li.dataset.c) ? "✓" : r.trifecta.findIndex(([c]) => c === li.dataset.c) + 1;
+      renderPicked(triBox, r);
+    });
+    renderPicked(triBox, r);
     $(".odds-note", el).textContent = r.odds
       ? (r.odds.at === "確定" || r.odds.at === "締切時"
         ? "オッズ: 締切時オッズ"
