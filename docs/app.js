@@ -26,6 +26,7 @@ async function init() {
   input.addEventListener("change", () => input.value && select({ date: input.value, stadium: state.stadium, race: null }));
   $("#prev-day").onclick = () => stepDay(-1);
   $("#next-day").onclick = () => stepDay(1);
+  $("#today").onclick = () => select({ date: todayJST(), stadium: state.stadium, race: null });
   $("#refresh").onclick = refresh;
   window.addEventListener("hashchange", () => select(parseHash()));
   // タブに戻ってきたら、待たずに最新を取りに行く
@@ -191,6 +192,7 @@ function renderTabs(stadiums, races) {
 
 function updateDayButtons() {
   const dates = index.days.map((d) => d.date).sort();
+  $("#today").disabled = state.date === todayJST();
   $("#prev-day").disabled = !dates.some((d) => d < state.date);
   $("#next-day").disabled = !dates.some((d) => d > state.date);
 }
@@ -205,6 +207,22 @@ function tab(html, pressed, onclick) {
 
 // ".02" / "F.03" 形式の ST 表示
 const fmtST = (st) => (st == null ? "-" : (st < 0 ? "F" : "") + "." + String(Math.round(Math.abs(st) * 100)).padStart(2, "0"));
+
+// スタート展示の艇（右向き。後ろにモーター、上に選手）を艇番の色で描く
+const LANE_COLORS = { 1: ["#ffffff", "#8a8a8a"], 2: ["#2b2b2b", "#111"], 3: ["#e5322d", "#a61e1a"],
+                      4: ["#1f5fbf", "#123f85"], 5: ["#f2c500", "#b08f00"], 6: ["#1f9a4b", "#126b32"] };
+function boatSVG(n, right) {
+  const [fill, line] = LANE_COLORS[n] ?? ["#999", "#666"];
+  return `<svg class="st-boat" style="right:${right}%" viewBox="0 0 56 26" aria-hidden="true">
+    <rect x="1" y="9" width="7" height="9" rx="1.5" fill="#9aa3ad" stroke="#5f6770"/>
+    <rect x="3" y="6" width="9" height="3" rx="1" fill="#5f6770"/>
+    <path d="M9 15 L44 15 Q54 16.5 55 18.5 Q50 22 42 22 L11 22 Q9 22 9 20 Z" fill="#f4f6f8" stroke="${line}" stroke-width="1.4"/>
+    <path d="M11 18.5 L50 18.5" stroke="${line}" stroke-width="1.6"/>
+    <path d="M20 15 Q21 9 27 8.5 L33 8.5 Q36 9 36 15 Z" fill="${fill}" stroke="${line}" stroke-width="1.2"/>
+    <circle cx="31" cy="6.5" r="4.2" fill="${fill}" stroke="${line}" stroke-width="1.2"/>
+    <path d="M32 5 L35.5 5.5" stroke="${line === "#8a8a8a" ? "#555" : "#fff"}" stroke-width="1.2" stroke-linecap="round"/>
+  </svg>`;
+}
 
 // スタート展示: 上から1〜6コースの順に、入った艇・ST の早さ（位置）・ST
 function renderStart(box, r) {
@@ -221,7 +239,7 @@ function renderStart(box, r) {
     const moved = b.course !== b.boat;
     return `<div class="st-row">
       <span class="lane l${b.boat} ${moved ? "moved-lane" : ""}" title="${moved ? `${b.boat}号艇が${b.course}コースから進入` : `${b.course}コース`}">${b.boat}</span>
-      <div class="st-track"><span class="st-boat l${b.boat}" style="right:${back}%"></span></div>
+      <div class="st-track">${boatSVG(b.boat, back)}</div>
       <span class="st-time ${st != null && st < 0 ? "flying" : ""}">${fmtST(st)}</span>
     </div>`;
   }).join("");

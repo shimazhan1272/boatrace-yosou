@@ -29,6 +29,7 @@ select { font: inherit; padding: 6px 10px; border-radius: 8px; border: 1px solid
 .date-nav input { font: inherit; padding: 5px 8px; border-radius: 8px; border: 1px solid var(--line); background: var(--card); color: var(--text); color-scheme: light dark; }
 .date-nav button { font: inherit; width: 32px; height: 34px; border-radius: 8px; border: 1px solid var(--line); background: var(--card); color: var(--text); cursor: pointer; }
 .date-nav button:disabled { opacity: .35; cursor: default; }
+.date-nav .today-btn { width: auto; padding: 0 12px; border-color: var(--accent); color: var(--accent); font-weight: 700; }
 .day-note { margin: 0 0 10px; padding: 8px 12px; border-radius: 10px; font-size: 13px; background: color-mix(in srgb, var(--accent) 12%, var(--card)); border: 1px solid color-mix(in srgb, var(--accent) 40%, var(--line)); }
 .day-note b { color: var(--accent); margin-right: 6px; }
 
@@ -95,7 +96,7 @@ select { font: inherit; padding: 6px 10px; border-radius: 8px; border: 1px solid
 .st-row .lane { justify-self: center; }
 .st-row .moved-lane { outline: 2px solid #d9480f; outline-offset: 2px; }
 .st-track { position: relative; height: 100%; border-right: 2px solid #f2c500; }
-.st-boat { position: absolute; top: 50%; transform: translateY(-50%); width: 34px; height: 12px; border-radius: 3px 8px 8px 3px; border: 1px solid rgba(0, 0, 0, .45); }
+.st-boat { position: absolute; top: 50%; transform: translateY(-50%); width: 50px; height: 24px; }
 .st-time { text-align: right; padding-right: 10px; font-variant-numeric: tabular-nums; color: #0b2545; font-weight: 600; }
 .st-time.flying { color: #c92a2a; font-weight: 800; }
 .st-none { margin: 0; padding: 10px; text-align: center; background: var(--card); }
