@@ -1,5 +1,5 @@
 # 毎朝 06:00 JST: 前日分の過去データ（出走表・直前情報・結果）を取り込み、前日の予想の結果を確定させる。
-# あわせてオッズの無い過去レースの締切時オッズを1日400件までさかのぼって取得する
+# 前日までのデータでモデルを再学習し、オッズの無い過去レースの締切時オッズを1日400件までさかのぼって取得する
 name: daily data
 
 on:
@@ -19,7 +19,7 @@ concurrency:
 jobs:
   daily:
     runs-on: ubuntu-latest
-    timeout-minutes: 90
+    timeout-minutes: 120
     environment:
       name: github-pages
       url: ${{ steps.deploy.outputs.page_url }}
@@ -50,7 +50,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add docs/data
+          git add docs/data models
           git diff --cached --quiet || git commit -m "daily data $(TZ=Asia/Tokyo date '+%F')"
           git pull --rebase -X theirs  # 競合したら今回生成したデータを優先
           git push

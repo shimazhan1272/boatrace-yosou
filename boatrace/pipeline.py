@@ -595,6 +595,46 @@ def build_index():
     (SITE_DATA_DIR / "index.json").write_text(json.dumps(index, ensure_ascii=False, indent=1), encoding="utf-8")
 
 
+RETRAIN_DAYS = 570  # 毎朝の再学習に使う期間（月次の再学習と同じ）
+
+
+def retrain(end: date | None = None):
+    """毎朝の再学習: 前日までのデータでモデルを学習し直す。
+
+    反復数は月次の再学習（検証あり）で決めた値を使い、検証は省く。
+    両モデルの学習と簡単な確認が済んでから保存し、失敗したら前日のモデルのまま。
+    """
+    end = end or today_jst() - timedelta(days=1)
+    start = end - timedelta(days=RETRAIN_DAYS)
+    print(f"retrain {start} .. {end}")
+    df, _ = make_dataset(start, end)
+    recent = df[df["date"] > pd.Timestamp(end - timedelta(days=14))]
+
+    trained = {}
+    for kind in ("base", "full"):
+        meta = json.loads((MODEL_DIR / f"{kind}.json").read_text(encoding="utf-8"))
+        data, rec = (df, recent) if kind == "base" else (df[has_preview(df)], recent[has_preview(recent)])
+        booster = model.train(data, kind, rounds=int(meta["valid"]["best_iteration"] * 1.1))
+        # 確認: 確率が正常で、直近2週間の本命1着率が極端に低くないこと
+        p = model.win_probs(booster, rec, kind)
+        top = rec.assign(p=p).loc[lambda x: x.groupby("race_id")["p"].idxmax()]
+        acc = float((top["place"] == 1).mean())
+        if p.isna().any() or not 0.45 <= acc <= 0.9:
+            raise RuntimeError(f"[{kind}] sanity check failed: acc={acc:.3f}")
+        print(f"[{kind}] {data['race_id'].nunique()} races, recent top1 acc {acc:.3f}")
+        importance = sorted(zip(booster.feature_name(), booster.feature_importance("gain")), key=lambda t: -t[1])
+        trained[kind] = (booster, {
+            **meta,
+            "trained_at": datetime.now(JST).isoformat(timespec="seconds"),
+            "period": [str(start), str(end)],
+            "rounds": booster.current_iteration(),
+            "retrain": "daily",
+            "top_features": [[f, round(float(v), 1)] for f, v in importance[:15]],
+        })
+    for kind, (booster, meta) in trained.items():
+        model.save(booster, kind, meta)
+
+
 PAST_ODDS_PER_DAY = 400       # 毎朝さかのぼって取得する過去レースのオッズ件数
 PAST_ODDS_TIME_BUDGET = 45 * 60
 
@@ -644,7 +684,8 @@ def backfill_past_odds(limit: int = PAST_ODDS_PER_DAY, time_budget: float = PAST
 
 
 def daily(d: date | None = None):
-    """毎朝の定期実行: 前日分の過去データを取り込み、前日の予想に結果と締切時オッズを確定させる。
+    """毎朝の定期実行: 前日分の過去データを取り込み、前日の予想に結果と締切時オッズを確定させ、
+    前日までのデータでモデルを再学習してから当日の予想を作る。
 
     Open API は約3時間おきに同期されるので、朝には前日分の結果・直前情報が揃っている。
     取り込んだデータは data/raw（Actions のキャッシュ）に残り、特徴量の計算や再学習に使われる。
@@ -660,6 +701,11 @@ def daily(d: date | None = None):
         data = predict_day(yesterday, final_odds_limit=None)
         scored = sum("result" in r for r in data["races"])
         print(f"{yesterday}: results for {scored}/{len(data['races'])} races")
+    # 前日までのデータでモデルを学習し直す（失敗したら前日のモデルのまま続ける）
+    try:
+        retrain(yesterday)
+    except Exception as e:
+        print(f"retrain skipped: {e}")
     publish_context(today)
     # 当日の予想（出走表ベース）を朝のうちに作っておく。直前情報・オッズは10分おきの更新と画面の自動取得で入る
     data = predict_day(today)

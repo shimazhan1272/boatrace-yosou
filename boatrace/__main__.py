@@ -29,6 +29,7 @@ def main():
     p.add_argument("date", type=date.fromisoformat, nargs="?")
     sub.add_parser("update")
     sub.add_parser("daily")
+    sub.add_parser("retrain")
     sub.add_parser("reattach-odds")
     args = ap.parse_args()
 
@@ -49,6 +50,9 @@ def main():
         print(f"{data['date']}: {len(data['races'])} races")
     elif args.cmd == "reattach-odds":
         pipeline.reattach_backfill_odds()
+    elif args.cmd == "retrain":
+        pipeline.retrain()
+        pipeline.build_index()
     elif args.cmd == "daily":
         pipeline.daily()
     elif args.cmd == "update":
