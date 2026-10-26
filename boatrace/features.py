@@ -316,11 +316,15 @@ def add_relative_features(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def add_features(df: pd.DataFrame, history: pd.DataFrame,
-                 stadium_history: pd.DataFrame | None = None) -> pd.DataFrame:
-    """build_frame の出力に全特徴量を付与する。history は予測日より前の結果を含むこと。"""
+                 stadium_history: pd.DataFrame | None = None, base_key: str = "boat") -> pd.DataFrame:
+    """build_frame の出力に全特徴量を付与する。history は予測日より前の結果を含むこと。
+
+    base_key: base モデル用のコース特徴量を計算するコースの列（通常は枠なり想定の枠番。
+    展示前に進入を手動で指定したときは "course_est"）。
+    """
     df = add_racer_features(df, history)
     df["course_est"] = df["course"].fillna(df["boat"])
-    df = add_course_features(df, history, "boat", "_b", stadium_history)
+    df = add_course_features(df, history, base_key, "_b", stadium_history)
     df = add_course_features(df, history, "course_est", "_c", stadium_history)
     return add_relative_features(df)
 

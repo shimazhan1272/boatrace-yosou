@@ -69,7 +69,10 @@ async function fetchLive(silent) {
   try {
     if (!silent) msg.textContent = "直前情報・オッズを取得中…";
     // 更新ボタンは fresh=1 でキャッシュを使わず取り直す（同じレースは15秒に1回まで）
-    const res = await fetch(`${API_BASE}/api/race?date=${state.date}&stadium=${key.stadium}&race=${key.race}${silent ? "" : "&fresh=1"}`);
+    const rid = currentRace()?.race_id;
+    const manual = manualOrder.get(rid);
+    const res = await fetch(`${API_BASE}/api/race?date=${state.date}&stadium=${key.stadium}&race=${key.race}`
+      + `${silent ? "" : "&fresh=1"}${manual ? "&courses=" + manual.join(",") : ""}`);
     const body = await res.json();
     if (!res.ok) throw new Error(body.detail || res.status);
     const i = day.races.findIndex((r) => r.stadium === key.stadium && r.race_number === key.race);
@@ -331,25 +334,76 @@ function boatSVG(n, right) {
   </svg>`;
 }
 
+// スタート展示の並びの手動変更（レースごと）。manualOrder は計算に使う並び、editOrder は編集中の並び
+const manualOrder = new Map();
+const editOrder = new Map();
+
 // スタート展示: 上から1〜6コースの順に、入った艇・ST の早さ（位置）・ST
 function renderStart(box, r) {
   const rows = $(".st-rows", box);
+  const ctl = $(".st-ctl", box);
+  const editable = Boolean(API_BASE) && state.date === todayJST();
+  const editing = editOrder.get(r.race_id);
   const entered = r.boats.filter((b) => b.course != null).sort((a, b) => a.course - b.course);
-  if (!entered.length) {
+  const order = editing ?? (entered.length ? entered.map((b) => b.boat) : null);
+  box.classList.toggle("editing", Boolean(editing));
+
+  if (!order) {
     rows.innerHTML = `<p class="muted st-none">展示前（展示後に自動で表示されます）</p>`;
-    return;
+  } else {
+    rows.innerHTML = order.map((boatNo, idx) => {
+      const b = r.boats.find((x) => x.boat === boatNo);
+      const st = b.ex_st;
+      // ST 0.00 でスタートライン（右端）、0.50 で左端寄り
+      const back = st == null ? 50 : Math.min(Math.max(st, 0), 0.5) / 0.5 * 78;
+      const moved = idx + 1 !== b.boat;
+      const move = editing ? `<span class="st-move">
+          <button type="button" data-i="${idx}" data-d="-1" ${idx === 0 ? "disabled" : ""} aria-label="内へ">▲</button>
+          <button type="button" data-i="${idx}" data-d="1" ${idx === order.length - 1 ? "disabled" : ""} aria-label="外へ">▼</button>
+        </span>` : "";
+      return `<div class="st-row">
+        <span class="lane l${b.boat} ${moved ? "moved-lane" : ""}" title="${moved ? `${b.boat}号艇が${idx + 1}コースから進入` : `${idx + 1}コース`}">${b.boat}</span>
+        <div class="st-track">${boatSVG(b.boat, back)}</div>
+        <span class="st-time ${st != null && st < 0 ? "flying" : ""}">${fmtST(st)}</span>${move}
+      </div>`;
+    }).join("");
   }
-  rows.innerHTML = entered.map((b) => {
-    const st = b.ex_st;
-    // ST 0.00 でスタートライン（右端）、0.50 で左端寄り
-    const back = st == null ? 50 : Math.min(Math.max(st, 0), 0.5) / 0.5 * 78;
-    const moved = b.course !== b.boat;
-    return `<div class="st-row">
-      <span class="lane l${b.boat} ${moved ? "moved-lane" : ""}" title="${moved ? `${b.boat}号艇が${b.course}コースから進入` : `${b.course}コース`}">${b.boat}</span>
-      <div class="st-track">${boatSVG(b.boat, back)}</div>
-      <span class="st-time ${st != null && st < 0 ? "flying" : ""}">${fmtST(st)}</span>
-    </div>`;
-  }).join("");
+
+  const manual = manualOrder.has(r.race_id);
+  ctl.innerHTML = !editable ? `<small class="muted">並びの変更は当日のレースのみ</small>`
+    : editing ? `<button type="button" class="st-apply">この並びで計算</button><button type="button" class="st-cancel">キャンセル</button>`
+    : `<button type="button" class="st-edit">並びを変更</button>${manual
+        ? `<span class="manual-tag">手動の並びで計算中${r.live?.exhibition ? "" : "（展示前の参考値）"}</span><button type="button" class="st-reset">展示の並びに戻す</button>` : ""}`;
+
+  ctl.onclick = rows.onclick = async (e) => {
+    const t = e.target.closest("button");
+    if (!t) return;
+    if (t.dataset.i !== undefined) {  // ▲▼: 隣のコースと入れ替え
+      const arr = [...editOrder.get(r.race_id)];
+      const i = Number(t.dataset.i), j = i + Number(t.dataset.d);
+      [arr[i], arr[j]] = [arr[j], arr[i]];
+      editOrder.set(r.race_id, arr);
+      return renderStart(box, r);
+    }
+    if (t.classList.contains("st-edit")) {
+      editOrder.set(r.race_id, order ?? r.boats.map((b) => b.boat));  // 展示前は枠なりから
+      return renderStart(box, r);
+    }
+    if (t.classList.contains("st-cancel")) {
+      editOrder.delete(r.race_id);
+      return renderStart(box, r);
+    }
+    if (t.classList.contains("st-apply")) {
+      manualOrder.set(r.race_id, editOrder.get(r.race_id));
+      editOrder.delete(r.race_id);
+      return fetchLive(false);
+    }
+    if (t.classList.contains("st-reset")) {
+      manualOrder.delete(r.race_id);
+      editOrder.delete(r.race_id);
+      return fetchLive(false);
+    }
+  };
 }
 
 function renderRace(r) {
@@ -365,6 +419,7 @@ function renderRace(r) {
     const badge = $(".model", el);
     badge.textContent = r.model === "full" ? "直前情報あり" : "出走表のみ";
     badge.classList.add(r.model);
+    if (r.manual_courses) badge.insertAdjacentHTML("afterend", ' <span class="badge manual-badge">進入を手動変更</span>');
     if (r.recorded_after_close) badge.title = "直前情報は締切前に取得。予想の記録は締切後（定期実行の遅れのため）";
     const moved = r.boats.some((b) => b.course != null && b.course !== b.boat);
     if (moved) badge.insertAdjacentHTML("afterend", ' <span class="badge moved-badge">進入変化</span>');

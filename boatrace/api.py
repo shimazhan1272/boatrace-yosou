@@ -7,6 +7,7 @@
 GitHub Actions が公開している当日の context（過去成績の集計）と合わせて予想し直す。
 公式サイトへの負荷を抑えるため、同じレースの取得結果は短時間キャッシュする。
 """
+import copy
 import os
 import threading
 import time
@@ -198,14 +199,43 @@ def snapshots(date_: date = Query(alias="date")):
     return {"date": str(date_), "previews": previews}
 
 
+def _with_courses(preview: dict | None, program: dict, order: list[int]) -> dict:
+    """進入コースを手動の並びに置き換えた直前情報（展示前なら進入だけの直前情報）を作る。"""
+    course_of = {boat: i + 1 for i, boat in enumerate(order)}
+    if preview:
+        preview = copy.deepcopy(preview)
+        for b in preview["boats"]:
+            b["racer_course_number"] = course_of.get(b["racer_boat_number"])
+        return preview
+    nan = float("nan")
+    return {
+        "race_date": program["race_date"], "race_stadium_number": program["race_stadium_number"],
+        "race_number": program["race_number"],
+        "race_wind": nan, "race_wind_direction_number": nan, "race_wave": nan, "race_weather_number": nan,
+        "race_temperature": nan, "race_water_temperature": nan,
+        "boats": [{"racer_boat_number": boat, "racer_course_number": c, "racer_start_timing": nan,
+                   "racer_weight_adjustment": nan, "racer_exhibition_time": nan, "racer_tilt_adjustment": nan}
+                  for boat, c in course_of.items()],
+    }
+
+
 @app.get("/api/race")
 def race(date_: date = Query(alias="date"), stadium: int = Query(ge=1, le=24), race: int = Query(ge=1, le=12),
-         fresh: bool = False):
+         fresh: bool = False, courses: str | None = None):
+    """courses: 手動の進入（1コースから順に艇番をカンマ区切り。例 "1,2,3,6,4,5"）。指定時はその並びで予想する。"""
     if date_ != today_jst():
         raise HTTPException(400, "更新できるのは当日のレースのみです")
     program = _program(date_, stadium, race)
     if not program:
         raise HTTPException(404, "該当レースの出走表がありません")
+    order = None
+    if courses:
+        try:
+            order = [int(x) for x in courses.split(",")]
+        except ValueError:
+            order = []
+        if sorted(order) != sorted(b["racer_boat_number"] for b in program["boats"]):
+            raise HTTPException(400, "進入の指定が不正です")
     now = datetime.now(JST)
     closed = datetime.strptime(program["race_closed_at"], "%Y-%m-%d %H:%M:%S").replace(tzinfo=JST)
     is_closed = now >= closed
@@ -226,12 +256,18 @@ def race(date_: date = Query(alias="date"), stadium: int = Query(ge=1, le=24), r
             book = None  # オッズが取れなくても予想は返す
 
     racers = {b["racer_number"] for b in program["boats"]}
-    df = build_frame([program], [preview] if preview else [])
-    df = add_features(df, rh[rh["racer_number"].isin(racers)], sh[sh["stadium"] == stadium])
-    kind = "full" if has_preview(df).all() else "base"
+    used = _with_courses(preview, program, order) if order else preview
+    df = build_frame([program], [used] if used else [])
+    # 手動の進入: 展示後は直前情報ありのモデルで、展示前は出走表のみのモデルのコース特徴量を手動の並びで計算する
+    pre_manual = bool(order) and preview is None
+    df = add_features(df, rh[rh["racer_number"].isin(racers)], sh[sh["stadium"] == stadium],
+                      base_key="course_est" if pre_manual else "boat")
+    kind = "base" if pre_manual else ("full" if order or has_preview(df).all() else "base")
     df["p"] = model.win_probs(_booster(kind), df, kind)
     result = _race_prediction(df, kind)
     if book and book["trifecta"]:
         strategy.attach_odds(result, book, "締切時" if is_closed else book["fetched_at"])
     result["live"] = {"fetched_at": now.strftime("%Y-%m-%d %H:%M:%S"), "exhibition": preview is not None}
+    if order:
+        result["manual_courses"] = order
     return result

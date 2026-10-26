@@ -112,6 +112,16 @@ select { font: inherit; padding: 6px 10px; border-radius: 8px; border: 1px solid
 .st-boat { position: absolute; top: 50%; transform: translateY(-50%); width: 50px; height: 24px; }
 .st-time { text-align: right; padding-right: 10px; font-variant-numeric: tabular-nums; color: #0b2545; font-weight: 600; }
 .st-time.flying { color: #c92a2a; font-weight: 800; }
+.start-ex.editing .st-head, .start-ex.editing .st-row { grid-template-columns: 52px 1fr 56px 64px; }
+.start-ex.editing .st-head::after { content: "入替"; }
+.st-move { display: flex; gap: 4px; justify-content: center; }
+.st-move button { width: 26px; height: 24px; border-radius: 5px; border: 1px solid #1f4e9c; background: #fff; color: #1f4e9c; font-size: 11px; cursor: pointer; }
+.st-move button:disabled { opacity: .3; cursor: default; }
+.st-ctl { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; padding: 8px 10px; background: var(--card); border-top: 1px solid var(--line); font-size: 12px; }
+.st-ctl button { font: inherit; padding: 5px 12px; border-radius: 6px; border: 1px solid var(--accent); background: var(--card); color: var(--accent); cursor: pointer; }
+.st-ctl .st-apply { background: var(--accent); color: #fff; }
+.st-ctl .manual-tag { color: #d9480f; font-weight: 700; }
+.badge.manual-badge { border-color: #d9480f; background: #d9480f; color: #fff; }
 .st-none { margin: 0; padding: 10px; text-align: center; background: var(--card); }
 .boats .win { font-weight: 700; }
 
@@ -162,6 +172,9 @@ select { font: inherit; padding: 6px 10px; border-radius: 8px; border: 1px solid
   .picker-label { padding-top: 0; }
   .picker .tabs { width: 100%; }
   .races-tabs { grid-template-columns: repeat(6, 1fr); }
+  .st-move button { width: 32px; height: 30px; font-size: 13px; }
+  .start-ex.editing .st-head, .start-ex.editing .st-row { grid-template-columns: 44px 1fr 48px 76px; }
+  .start-ex.editing .st-row { height: 40px; }
   .boats { min-width: 600px; border-collapse: separate; border-spacing: 0; }
   .boats .name { white-space: nowrap; }
   .boats th:nth-child(1), .boats td:nth-child(1) {
