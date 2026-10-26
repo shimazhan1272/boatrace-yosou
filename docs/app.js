@@ -338,6 +338,57 @@ function boatSVG(n, right) {
 const manualOrder = new Map();
 const editOrder = new Map();
 
+const picking = new Map();  // タップで選択中の行（入れ替え元）
+
+// 並びの編集: 行を上下にスライドして挿入、またはタップで2艇を選んで入れ替え
+function dragRow(e, box, r) {
+  const row = e.target.closest(".st-row");
+  if (!row || (e.pointerType === "mouse" && e.button !== 0)) return;
+  e.preventDefault();
+  const all = [...box.querySelectorAll(".st-row")];
+  const from = Number(row.dataset.i);
+  const h = row.getBoundingClientRect().height;
+  const startY = e.clientY;
+  let to = from, dy = 0;
+  try { row.setPointerCapture(e.pointerId); } catch { /* 合成イベント等では不可 */ }
+  row.classList.add("dragging");
+
+  const move = (ev) => {
+    dy = ev.clientY - startY;
+    to = Math.max(0, Math.min(all.length - 1, from + Math.round(dy / h)));
+    row.style.transform = `translateY(${dy}px)`;
+    // 間にある行をずらして、落とす位置を見せる
+    all.forEach((el, k) => {
+      if (k === from) return;
+      const shift = from < to && k > from && k <= to ? -h : from > to && k < from && k >= to ? h : 0;
+      el.style.transform = shift ? `translateY(${shift}px)` : "";
+    });
+  };
+  const up = () => {
+    row.removeEventListener("pointermove", move);
+    row.removeEventListener("pointerup", up);
+    row.removeEventListener("pointercancel", up);
+    const arr = [...editOrder.get(r.race_id)];
+    if (Math.abs(dy) < 6) {
+      // タップ: 1回目で選択、2回目で入れ替え（同じ行なら選択解除）
+      const sel = picking.get(r.race_id);
+      if (sel === undefined) picking.set(r.race_id, from);
+      else {
+        if (sel !== from) [arr[sel], arr[from]] = [arr[from], arr[sel]];
+        picking.delete(r.race_id);
+      }
+    } else if (to !== from) {
+      arr.splice(to, 0, arr.splice(from, 1)[0]);
+      picking.delete(r.race_id);
+    }
+    editOrder.set(r.race_id, arr);
+    renderStart(box, r);
+  };
+  row.addEventListener("pointermove", move);
+  row.addEventListener("pointerup", up);
+  row.addEventListener("pointercancel", up);
+}
+
 // スタート展示: 上から1〜6コースの順に、入った艇・ST の早さ（位置）・ST
 function renderStart(box, r) {
   const rows = $(".st-rows", box);
@@ -357,11 +408,8 @@ function renderStart(box, r) {
       // ST 0.00 でスタートライン（右端）、0.50 で左端寄り
       const back = st == null ? 50 : Math.min(Math.max(st, 0), 0.5) / 0.5 * 78;
       const moved = idx + 1 !== b.boat;
-      const move = editing ? `<span class="st-move">
-          <button type="button" data-i="${idx}" data-d="-1" ${idx === 0 ? "disabled" : ""} aria-label="内へ">▲</button>
-          <button type="button" data-i="${idx}" data-d="1" ${idx === order.length - 1 ? "disabled" : ""} aria-label="外へ">▼</button>
-        </span>` : "";
-      return `<div class="st-row">
+      const move = editing ? `<span class="st-grip" aria-hidden="true">≡</span>` : "";
+      return `<div class="st-row ${editing && picking.get(r.race_id) === idx ? "picked" : ""}" data-i="${idx}">
         <span class="lane l${b.boat} ${moved ? "moved-lane" : ""}" title="${moved ? `${b.boat}号艇が${idx + 1}コースから進入` : `${idx + 1}コース`}">${b.boat}</span>
         <div class="st-track">${boatSVG(b.boat, back)}</div>
         <span class="st-time ${st != null && st < 0 ? "flying" : ""}">${fmtST(st)}</span>${move}
@@ -371,31 +419,30 @@ function renderStart(box, r) {
 
   const manual = manualOrder.has(r.race_id);
   ctl.innerHTML = !editable ? `<small class="muted">並びの変更は当日のレースのみ</small>`
-    : editing ? `<button type="button" class="st-apply">この並びで計算</button><button type="button" class="st-cancel">キャンセル</button>`
+    : editing ? `<small class="muted st-hint">艇を上下にスライド、またはタップで2艇を選んで入れ替え</small>`
+      + `<button type="button" class="st-apply">この並びで計算</button><button type="button" class="st-cancel">キャンセル</button>`
     : `<button type="button" class="st-edit">並びを変更</button>${manual
         ? `<span class="manual-tag">手動の並びで計算中${r.live?.exhibition ? "" : "（展示前の参考値）"}</span><button type="button" class="st-reset">展示の並びに戻す</button>` : ""}`;
 
-  ctl.onclick = rows.onclick = async (e) => {
+  rows.onpointerdown = editing ? (e) => dragRow(e, box, r) : null;
+
+  ctl.onclick = async (e) => {
     const t = e.target.closest("button");
     if (!t) return;
-    if (t.dataset.i !== undefined) {  // ▲▼: 隣のコースと入れ替え
-      const arr = [...editOrder.get(r.race_id)];
-      const i = Number(t.dataset.i), j = i + Number(t.dataset.d);
-      [arr[i], arr[j]] = [arr[j], arr[i]];
-      editOrder.set(r.race_id, arr);
-      return renderStart(box, r);
-    }
     if (t.classList.contains("st-edit")) {
       editOrder.set(r.race_id, order ?? r.boats.map((b) => b.boat));  // 展示前は枠なりから
+      picking.delete(r.race_id);
       return renderStart(box, r);
     }
     if (t.classList.contains("st-cancel")) {
       editOrder.delete(r.race_id);
+      picking.delete(r.race_id);
       return renderStart(box, r);
     }
     if (t.classList.contains("st-apply")) {
       manualOrder.set(r.race_id, editOrder.get(r.race_id));
       editOrder.delete(r.race_id);
+      picking.delete(r.race_id);
       return fetchLive(false);
     }
     if (t.classList.contains("st-reset")) {
