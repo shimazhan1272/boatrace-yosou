@@ -1,21 +1,36 @@
 {
- "updated_at": "2026-10-27 22:34:57",
+ "updated_at": "2026-10-28 06:48:28",
  "tri_bets": 5,
  "days": [
+  {
+   "date": "2026-10-28",
+   "file": "predictions/20261028.json",
+   "backtest": false,
+   "races": 132,
+   "scored": 0,
+   "honmei_hits": 0,
+   "trifecta_hits": 0,
+   "bet": 0,
+   "return": 0,
+   "ev_races": 0,
+   "ev_hits": 0,
+   "ev_bet": 0,
+   "ev_return": 0
+  },
   {
    "date": "2026-10-27",
    "file": "predictions/20261027.json",
    "backtest": false,
    "races": 168,
-   "scored": 147,
-   "honmei_hits": 76,
-   "trifecta_hits": 51,
-   "bet": 73500,
-   "return": 61320,
-   "ev_races": 98,
-   "ev_hits": 5,
-   "ev_bet": 29400,
-   "ev_return": 11100
+   "scored": 168,
+   "honmei_hits": 90,
+   "trifecta_hits": 57,
+   "bet": 84000,
+   "return": 66380,
+   "ev_races": 113,
+   "ev_hits": 7,
+   "ev_bet": 33900,
+   "ev_return": 28090
   },
   {
    "date": "2026-10-26",
@@ -965,10 +980,10 @@
  ],
  "models": {
   "base": {
-   "trained_at": "2026-10-27T06:28:00+09:00",
+   "trained_at": "2026-10-28T06:24:40+09:00",
    "period": [
-    "2025-04-04",
-    "2026-10-26"
+    "2025-04-05",
+    "2026-10-27"
    ],
    "rounds": 753,
    "valid": {
@@ -986,72 +1001,72 @@
    "top_features": [
     [
      "rc_win_b_diff",
-     1175064.7
+     1177287.3
     ],
     [
      "rc_win_b_rank",
-     273022.5
+     270203.4
     ],
     [
      "nat_win_diff",
-     92481.8
+     90889.9
     ],
     [
      "stadium",
-     59134.3
+     59695.8
     ],
     [
      "meet_place_diff",
-     42636.0
+     43343.0
     ],
     [
      "sc_win_b",
-     42398.8
+     39968.6
     ],
     [
      "rc_top3_b",
-     32781.0
+     33100.2
     ],
     [
      "st_gap_inside_b",
-     25489.1
+     29228.6
     ],
     [
      "sc_win_nige_b",
-     25232.7
+     26719.8
     ],
     [
      "rc_win_b",
-     25002.6
+     25664.8
     ],
     [
      "sc_top2_b",
-     24154.1
+     24861.6
     ],
     [
      "form_win_diff",
-     20044.1
+     19299.8
     ],
     [
      "motor_top2_diff",
-     17870.3
+     18906.5
     ],
     [
      "nat_top2_diff",
-     16000.1
+     16997.1
     ],
     [
-     "form_top3_diff",
-     14888.1
+     "sc_top3_b",
+     15065.2
     ]
    ],
    "retrain": "daily"
   },
   "full": {
-   "trained_at": "2026-10-27T06:29:13+09:00",
+   "trained_at": "2026-10-28T06:26:17+09:00",
    "period": [
-    "2025-04-04",
-    "2026-10-26"
+    "2025-04-05",
+    "2026-10-27"
    ],
    "rounds": 1036,
    "valid": {
@@ -1069,63 +1084,63 @@
    "top_features": [
     [
      "rc_win_c_diff",
-     947852.2
+     856906.9
     ],
     [
      "rc_win_b_diff",
-     442317.5
+     490370.5
     ],
     [
      "rc_win_b_rank",
-     75822.6
+     121474.3
     ],
     [
      "nat_win_diff",
-     65729.4
+     67368.0
     ],
     [
      "stadium",
-     65353.9
-    ],
-    [
-     "rc_win_c_rank",
-     42042.5
+     65544.4
     ],
     [
      "meet_place_diff",
-     38918.9
+     39803.8
+    ],
+    [
+     "rc_win_c_rank",
+     38291.8
     ],
     [
      "ex_time_diff",
-     36078.3
+     35207.0
     ],
     [
      "rc_top3_c",
-     31662.6
+     31873.2
     ],
     [
      "sc_win_b",
-     21799.4
+     23442.0
     ],
     [
      "st_gap_inside_c",
-     19405.0
-    ],
-    [
-     "motor_top2_diff",
-     18359.4
-    ],
-    [
-     "form_win_diff",
-     17813.8
-    ],
-    [
-     "sc_win_c",
-     17523.1
+     20435.8
     ],
     [
      "rc_top3_b",
-     17122.5
+     19756.2
+    ],
+    [
+     "form_win_diff",
+     17701.6
+    ],
+    [
+     "motor_top2_diff",
+     17493.8
+    ],
+    [
+     "ex_adj_c",
+     17355.2
     ]
    ],
    "retrain": "daily"
