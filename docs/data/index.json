@@ -1,5 +1,5 @@
 {
- "updated_at": "2026-10-31 16:35:42",
+ "updated_at": "2026-10-31 22:53:44",
  "tri_bets": 5,
  "days": [
   {
@@ -7,15 +7,15 @@
    "file": "predictions/20261031.json",
    "backtest": false,
    "races": 156,
-   "scored": 82,
-   "honmei_hits": 45,
-   "trifecta_hits": 23,
-   "bet": 41000,
-   "return": 30620,
-   "ev_races": 49,
-   "ev_hits": 1,
-   "ev_bet": 14700,
-   "ev_return": 5430
+   "scored": 155,
+   "honmei_hits": 89,
+   "trifecta_hits": 45,
+   "bet": 77500,
+   "return": 59390,
+   "ev_races": 76,
+   "ev_hits": 2,
+   "ev_bet": 22800,
+   "ev_return": 13380
   },
   {
    "date": "2026-10-30",
